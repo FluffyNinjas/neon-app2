@@ -13,7 +13,7 @@ export default function Index() {
       
       if (user) {
         // User is signed in, redirect to users section
-        router.replace('(users)');
+        router.replace('/(users)/home');
       } else {
         // User is not signed in, redirect to auth section
         router.replace('/(auth)/login');
