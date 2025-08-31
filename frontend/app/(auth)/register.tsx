@@ -21,6 +21,7 @@ import {
   paths,
   type UserType 
 } from '../../shared/models/firestore';
+import { COLORS } from '../../constants/Colors';
 
 export default function RegisterScreen() {
   const [email, setEmail] = useState('');
@@ -97,7 +98,7 @@ export default function RegisterScreen() {
             <TextInput
               style={styles.input}
               placeholder="Display Name *"
-              placeholderTextColor={'grey'}
+              placeholderTextColor={COLORS.muted}
               value={displayName}
               onChangeText={setDisplayName}
               autoCapitalize="words"
@@ -106,7 +107,7 @@ export default function RegisterScreen() {
 
             <TextInput
               style={styles.input}
-              placeholderTextColor={'grey'}
+              placeholderTextColor={COLORS.muted}
               placeholder="Email *"
               value={email}
               onChangeText={setEmail}
@@ -118,7 +119,7 @@ export default function RegisterScreen() {
             <TextInput
               style={styles.input}
               placeholder="Password *"
-              placeholderTextColor={'grey'}
+              placeholderTextColor={COLORS.muted}
               value={password}
               onChangeText={setPassword}
               secureTextEntry
@@ -128,7 +129,7 @@ export default function RegisterScreen() {
             <TextInput
               style={styles.input}
               placeholder="Confirm Password *"
-              placeholderTextColor={'grey'}
+              placeholderTextColor={COLORS.muted}
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               secureTextEntry
@@ -202,7 +203,7 @@ export default function RegisterScreen() {
               disabled={loading}
             >
               {loading ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={COLORS.text} />
               ) : (
                 <Text style={styles.buttonText}>Create Account</Text>
               )}
@@ -224,7 +225,7 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.background,
   },
   scrollContent: {
     flexGrow: 1,
@@ -240,25 +241,26 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: 8,
-    color: '#000',
+    color: COLORS.text,
   },
   subtitle: {
     fontSize: 16,
     textAlign: 'center',
     marginBottom: 32,
-    color: '#666',
+    color: COLORS.muted,
   },
   form: {
     marginBottom: 24,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
+    borderColor: COLORS.primary,
+    borderRadius: 12,
     padding: 16,
     marginBottom: 16,
     fontSize: 16,
-    backgroundColor: '#f9f9f9',
+    backgroundColor: COLORS.surface,
+    color: COLORS.text,
   },
   userTypeContainer: {
     marginBottom: 24,
@@ -267,21 +269,21 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 16,
-    color: '#000',
+    color: COLORS.text,
   },
   userTypeOption: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
+    borderColor: COLORS.primary,
+    borderRadius: 12,
     marginBottom: 12,
-    backgroundColor: '#f9f9f9',
+    backgroundColor: COLORS.surface,
   },
   userTypeOptionSelected: {
-    borderColor: '#007AFF',
-    backgroundColor: '#f0f8ff',
+    borderColor: COLORS.accent,
+    backgroundColor: COLORS.primary,
   },
   radioContainer: {
     marginRight: 16,
@@ -291,11 +293,11 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: '#ddd',
+    borderColor: COLORS.secondary,
   },
   radioSelected: {
-    borderColor: '#007AFF',
-    backgroundColor: '#007AFF',
+    borderColor: COLORS.accent,
+    backgroundColor: COLORS.accent,
   },
   userTypeText: {
     flex: 1,
@@ -304,15 +306,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 4,
-    color: '#000',
+    color: COLORS.text,
   },
   userTypeDescription: {
     fontSize: 14,
-    color: '#666',
+    color: COLORS.muted,
   },
   button: {
-    backgroundColor: '#007AFF',
-    borderRadius: 8,
+    backgroundColor: COLORS.accent,
+    borderRadius: 12,
     padding: 16,
     alignItems: 'center',
     marginTop: 8,
@@ -321,7 +323,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   buttonText: {
-    color: '#fff',
+    color: COLORS.background,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -332,11 +334,11 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 16,
-    color: '#666',
+    color: COLORS.muted,
   },
   linkText: {
     fontSize: 16,
-    color: '#007AFF',
+    color: COLORS.accent,
     fontWeight: '600',
   },
 });

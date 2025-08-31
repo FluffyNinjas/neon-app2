@@ -13,6 +13,7 @@ import {
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../../FirebaseConfig';
 import { router } from 'expo-router';
+import { COLORS } from '../../constants/Colors';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -52,7 +53,7 @@ export default function LoginScreen() {
         <View style={styles.form}>
           <TextInput
             style={styles.input}
-            placeholderTextColor={'grey'}
+            placeholderTextColor={COLORS.muted}
             placeholder="Email"
             value={email}
             onChangeText={setEmail}
@@ -63,7 +64,7 @@ export default function LoginScreen() {
           
           <TextInput
             style={styles.input}
-            placeholderTextColor={'grey'}
+            placeholderTextColor={COLORS.muted}
             placeholder="Password"
             value={password}
             onChangeText={setPassword}
@@ -77,7 +78,7 @@ export default function LoginScreen() {
             disabled={loading}
           >
             {loading ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={COLORS.text} />
             ) : (
               <Text style={styles.buttonText}>Sign In</Text>
             )}
@@ -98,7 +99,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.background,
   },
   content: {
     flex: 1,
@@ -110,29 +111,30 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: 8,
-    color: '#000',
+    color: COLORS.text,
   },
   subtitle: {
     fontSize: 16,
     textAlign: 'center',
     marginBottom: 32,
-    color: '#666',
+    color: COLORS.muted,
   },
   form: {
     marginBottom: 24,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
+    borderColor: COLORS.primary,
+    borderRadius: 12,
     padding: 16,
     marginBottom: 16,
     fontSize: 16,
-    backgroundColor: '#f9f9f9',
+    backgroundColor: COLORS.surface,
+    color: COLORS.text,
   },
   button: {
-    backgroundColor: '#007AFF',
-    borderRadius: 8,
+    backgroundColor: COLORS.accent,
+    borderRadius: 12,
     padding: 16,
     alignItems: 'center',
     marginTop: 8,
@@ -141,7 +143,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   buttonText: {
-    color: '#fff',
+    color: COLORS.background,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -152,11 +154,11 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 16,
-    color: '#666',
+    color: COLORS.muted,
   },
   linkText: {
     fontSize: 16,
-    color: '#007AFF',
+    color: COLORS.accent,
     fontWeight: '600',
   },
 });
