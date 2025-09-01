@@ -6,7 +6,7 @@ import { COLORS } from '../../constants/Colors'
 
 export default function screens() {
   const handleCreateScreen = () => {
-    router.push('/book-screen/')
+    router.replace('/book-screen/')
   }
 
   return (
