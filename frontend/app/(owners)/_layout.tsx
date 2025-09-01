@@ -27,20 +27,20 @@ export default function OwnersTabLayout() {
         }}
       />
       <Tabs.Screen
-        name="booking"
-        options={{
-          title: "Bookings",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="calendar-outline" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="screens"
         options={{
           title: "Screens",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="tv-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="booking"
+        options={{
+          title: "Bookings",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="calendar-outline" size={size} color={color} />
           ),
         }}
       />

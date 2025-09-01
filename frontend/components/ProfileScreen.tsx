@@ -12,7 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { COLORS } from '../constants/Colors';
-import { userService, UserHelpers, UserDoc } from '../services/user/useService';
+import { userService, UserHelpers, UserDoc } from '../services/user/userService';
 
 interface ProfileScreenProps {
   userType: 'user' | 'owner';
