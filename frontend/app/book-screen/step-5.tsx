@@ -1,4 +1,3 @@
-import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -11,13 +10,12 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { COLORS } from '../../constants/Colors';
-import { useScreenCreationStore, ScreenImage } from '../../stores/useScreenCreationStore';
+import { useScreenCreationStore } from '../../stores/useScreenCreationStore';
 import StepLayout from '../../components/StepLayout';
 import * as ImagePicker from 'expo-image-picker';
 
 export default function Step5Pictures() {
   const { images, addImage, removeImage, reorderImages, isStepComplete } = useScreenCreationStore();
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
   const handleNext = () => {
     if (isStepComplete(5)) {

@@ -13,6 +13,8 @@ import { router } from 'expo-router';
 import { COLORS } from '../../constants/Colors';
 import { useScreenCreationStore } from '../../stores/useScreenCreationStore';
 import StepLayout from '../../components/StepLayout';
+// Import the screen types configuration
+import { getScreenTypeById } from '../../constants/ScreenTypes';
 
 const DAYS = [
   { key: 'monday', label: 'Monday', short: 'Mon' },
@@ -78,17 +80,8 @@ export default function Step7Confirmation() {
   };
 
   const getScreenTypeLabel = (type: string) => {
-    const types: { [key: string]: string } = {
-      'digital-billboard': 'Digital Billboard',
-      'led-screen': 'LED Screen',
-      'lcd-display': 'LCD Display',
-      'interactive-kiosk': 'Interactive Kiosk',
-      'projection-screen': 'Projection Screen',
-      'transit-display': 'Transit Display',
-      'retail-display': 'Retail Display',
-      'other': 'Other',
-    };
-    return types[type] || type;
+    const screenTypeData = getScreenTypeById(type);
+    return screenTypeData ? screenTypeData.title : type;
   };
 
   const availableDays = availability.filter(day => day.isAvailable);
@@ -262,8 +255,8 @@ export default function Step7Confirmation() {
               <Text style={styles.infoTitle}>What happens next?</Text>
               <Text style={styles.infoText}>
                 • Your listing will be reviewed within 24-48 hours{'\n'}
-                • We'll verify the information and photos{'\n'}
-                • You'll receive a notification once approved{'\n'}
+                • We&apos;ll verify the information and photos{'\n'}
+                • You&apos;ll receive a notification once approved{'\n'}
                 • Your screen will then be visible to renters
               </Text>
             </View>

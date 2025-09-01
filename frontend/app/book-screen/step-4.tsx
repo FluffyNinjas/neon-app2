@@ -133,7 +133,7 @@ export default function Step4Pricing() {
           <View style={styles.tip}>
             <Ionicons name="bulb-outline" size={20} color={COLORS.accent} />
             <Text style={styles.tipText}>
-              Consider your screen's location, size, and visibility when setting your price
+              Consider your screen&apos;s location, size, and visibility when setting your price
             </Text>
           </View>
           <View style={styles.tip}>
