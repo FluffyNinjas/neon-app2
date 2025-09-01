@@ -1,26 +1,13 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-  TouchableOpacity,
-  Alert,
+  View, Text, StyleSheet, SafeAreaView, TouchableOpacity,
+  Alert, Animated, Easing
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { COLORS } from '../constants/Colors';
 import { useScreenCreationStore } from '../stores/useScreenCreationStore';
-
-interface StepLayoutProps {
-  currentStep: number;
-  totalSteps: number;
-  title: string;
-  children: React.ReactNode;
-  onNext: () => void;
-  nextButtonDisabled?: boolean;
-  nextButtonText?: string;
-}
+import { useProgressStore } from '../stores/useProgressStore';
 
 export default function StepLayout({
   currentStep,
@@ -30,23 +17,22 @@ export default function StepLayout({
   onNext,
   nextButtonDisabled = false,
   nextButtonText = 'Next',
-}: StepLayoutProps) {
-  const resetStore = useScreenCreationStore(state => state.resetStore);
+}) {
+  const resetCreation = useScreenCreationStore((s) => s.resetStore);
+  const { lastRatio, setLastRatio, reset: resetProgress } = useProgressStore();
 
   const handleClose = () => {
     Alert.alert(
       'Exit Screen Creation',
       'Are you sure you want to exit? All progress will be lost.',
       [
-        {
-          text: 'No',
-          style: 'cancel',
-        },
+        { text: 'No', style: 'cancel' },
         {
           text: 'Yes',
           style: 'destructive',
           onPress: () => {
-            resetStore();
+            resetCreation();
+            resetProgress();                 // <-- clear persisted progress
             router.replace('/(owners)/screens');
           },
         },
@@ -55,14 +41,36 @@ export default function StepLayout({
   };
 
   const handleBack = () => {
-    if (currentStep === 1) {
-      router.back(); // Go back to intro
-    } else {
-      router.back();
-    }
+    router.back();
   };
 
-  const progressPercentage = (currentStep / totalSteps) * 100;
+  // --- Animated progress (pixel width) with persisted start ---
+  const [trackW, setTrackW] = useState(0);
+  const progressPx = useRef(new Animated.Value(0)).current;
+
+  const ratio = Math.max(0, Math.min(1, currentStep / totalSteps));
+
+  // Initialize from persisted ratio once we know the width
+  const onTrackLayout = (e: any) => {
+    const w = e.nativeEvent.layout.width;
+    setTrackW(w);
+    // Set without animation so we don't "grow from zero" on every mount
+    progressPx.setValue(lastRatio * w);
+  };
+
+  // Animate to the current step ratio
+  useEffect(() => {
+    if (!trackW) return;
+    Animated.timing(progressPx, {
+      toValue: ratio * trackW,
+      duration: 450,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false, // width anim
+    }).start(() => {
+      // persist the latest ratio so the next screen starts from here
+      setLastRatio(ratio);
+    });
+  }, [ratio, trackW]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -81,8 +89,8 @@ export default function StepLayout({
 
       {/* Progress Bar */}
       <View style={styles.progressContainer}>
-        <View style={styles.progressBarBackground}>
-          <View style={[styles.progressBar, { width: `${progressPercentage}%` }]} />
+        <View style={styles.progressBarBackground} onLayout={onTrackLayout}>
+          <Animated.View style={[styles.progressBar, { width: progressPx }]} />
         </View>
       </View>
 
@@ -92,33 +100,22 @@ export default function StepLayout({
       </View>
 
       {/* Content */}
-      <View style={styles.content}>
-        {children}
-      </View>
+      <View style={styles.content}>{children}</View>
 
       {/* Navigation */}
       <View style={styles.navigation}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={handleBack}
-        >
+        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
           <Ionicons name="arrow-back" size={20} color={COLORS.text} />
           <Text style={styles.backButtonText}>Back</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[
-            styles.nextButton,
-            nextButtonDisabled && styles.nextButtonDisabled,
-          ]}
+          style={[styles.nextButton, nextButtonDisabled && styles.nextButtonDisabled]}
           onPress={onNext}
           disabled={nextButtonDisabled}
         >
           <Text
-            style={[
-              styles.nextButtonText,
-              nextButtonDisabled && styles.nextButtonTextDisabled,
-            ]}
+            style={[styles.nextButtonText, nextButtonDisabled && styles.nextButtonTextDisabled]}
           >
             {nextButtonText}
           </Text>
