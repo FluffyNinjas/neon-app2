@@ -9,7 +9,11 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Allow access to your photos to upload screen images.",
+        "NSCameraUsageDescription": "Allow camera access to take photos of your screen."
+      }
     },
     "android": {
       "adaptiveIcon": {
