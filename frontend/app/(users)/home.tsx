@@ -11,9 +11,13 @@ import {
   FlatList,
   Dimensions,
   Animated,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../constants/Colors';
+import { ScreenService } from '../../services/screenService';
+import { ScreenCard } from '../../components/ScreenCard';
+import { ScreenDoc } from '../../shared/models/firestore';
 
 const { width } = Dimensions.get('window');
 const SCREEN_PADDING = 16;
@@ -26,89 +30,57 @@ const HEADER_MAX_HEIGHT = 120;
 const HEADER_MIN_HEIGHT = 0;
 const HEADER_SCROLL_DISTANCE = HEADER_MAX_HEIGHT - HEADER_MIN_HEIGHT;
 
-// Mock data for testing
 const CATEGORIES = [
-  { id: 'all', name: 'All', count: 24 },
-  { id: 'digital', name: 'Digital Displays', count: 12 },
-  { id: 'led', name: 'LED Screens', count: 8 },
-  { id: 'interactive', name: 'Interactive', count: 4 },
-];
-
-const SCREENS_DATA = [
-  {
-    id: 's1',
-    title: 'Times Square LED Wall',
-    location: 'New York, NY',
-    type: 'LED Billboard',
-    price: '$450/day',
-    rating: 4.9,
-    reviews: 127,
-    image: 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?q=80&w=400&auto=format&fit=crop',
-    featured: true,
-  },
-  {
-    id: 's2',
-    title: 'Mall Digital Display',
-    location: 'Los Angeles, CA',
-    type: 'Digital Screen',
-    price: '$120/day',
-    rating: 4.7,
-    reviews: 89,
-    image: 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?q=80&w=400&auto=format&fit=crop',
-    featured: false,
-  },
-  {
-    id: 's3',
-    title: 'Coffee Shop Display',
-    location: 'Seattle, WA',
-    type: 'Small Screen',
-    price: '$45/day',
-    rating: 4.5,
-    reviews: 34,
-    image: 'https://images.unsplash.com/photo-1517705008128-361805f42e86?q=80&w=400&auto=format&fit=crop',
-    featured: false,
-  },
-  {
-    id: 's4',
-    title: 'Bus Stop Interactive',
-    location: 'Chicago, IL',
-    type: 'Interactive Screen',
-    price: '$85/day',
-    rating: 4.6,
-    reviews: 67,
-    image: 'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?q=80&w=400&auto=format&fit=crop',
-    featured: true,
-  },
-  {
-    id: 's5',
-    title: 'Airport Terminal Screen',
-    location: 'Miami, FL',
-    type: 'Digital Display',
-    price: '$200/day',
-    rating: 4.8,
-    reviews: 156,
-    image: 'https://images.unsplash.com/photo-1558611848-73f7eb4001a1?q=80&w=400&auto=format&fit=crop',
-    featured: false,
-  },
-  {
-    id: 's6',
-    title: 'Gym Wall Display',
-    location: 'Austin, TX',
-    type: 'LED Screen',
-    price: '$75/day',
-    rating: 4.4,
-    reviews: 43,
-    image: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?q=80&w=400&auto=format&fit=crop',
-    featured: false,
-  },
+  { id: 'all', name: 'All' },
+  { id: 'digital', name: 'Digital Displays' },
+  { id: 'led', name: 'LED Screens' },
+  { id: 'interactive', name: 'Interactive' },
 ];
 
 const home = () => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [screens, setScreens] = useState<ScreenDoc[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [favoriteScreens, setFavoriteScreens] = useState<Set<string>>(new Set());
   
   const scrollY = useRef(new Animated.Value(0)).current;
   const flatListRef = useRef(null);
+
+  // Fetch screens on component mount
+  useEffect(() => {
+    loadScreens();
+  }, []);
+
+  const loadScreens = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const fetchedScreens = await ScreenService.getAllScreens();
+      setScreens(fetchedScreens);
+    } catch (err) {
+      console.error('Error loading screens:', err);
+      setError('Failed to load screens. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleScreenPress = (screen: ScreenDoc) => {
+    // TODO: Navigate to screen details
+    console.log('Screen pressed:', screen.title);
+  };
+
+  const handleFavoritePress = (screen: ScreenDoc) => {
+    const newFavorites = new Set(favoriteScreens);
+    if (newFavorites.has(screen.id)) {
+      newFavorites.delete(screen.id);
+    } else {
+      newFavorites.add(screen.id);
+    }
+    setFavoriteScreens(newFavorites);
+  };
 
   // Header animation values
   const headerHeight = scrollY.interpolate({
@@ -123,53 +95,29 @@ const home = () => {
     extrapolate: 'clamp',
   });
 
-  const filteredScreens = SCREENS_DATA.filter(screen => {
-    const matchesSearch = screen.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         screen.location.toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredScreens = screens.filter(screen => {
+    const matchesSearch = searchQuery.trim() === '' || 
+      screen.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      ScreenService.formatLocation(screen).toLowerCase().includes(searchQuery.toLowerCase()) ||
+      screen.screenType.toLowerCase().includes(searchQuery.toLowerCase());
+    
     const matchesCategory = selectedCategory === 'all' || 
-                           (selectedCategory === 'digital' && screen.type.includes('Digital')) ||
-                           (selectedCategory === 'led' && screen.type.includes('LED')) ||
-                           (selectedCategory === 'interactive' && screen.type.includes('Interactive'));
+      (selectedCategory === 'digital' && screen.screenType.toLowerCase().includes('digital')) ||
+      (selectedCategory === 'led' && screen.screenType.toLowerCase().includes('led')) ||
+      (selectedCategory === 'interactive' && screen.screenType.toLowerCase().includes('interactive'));
+    
     return matchesSearch && matchesCategory;
   });
 
-  const renderScreenCard = ({ item, index }) => (
-    <TouchableOpacity 
-      style={[
-        styles.screenCard,
-        { marginLeft: index % CARDS_PER_ROW === 0 ? 0 : CARD_SPACING }
-      ]}
-    >
-      <View style={styles.cardImageContainer}>
-        <Image source={{ uri: item.image }} style={styles.cardImage} />
-        {item.featured && (
-          <View style={styles.featuredBadge}>
-            <Text style={styles.featuredText}>Featured</Text>
-          </View>
-        )}
-        <TouchableOpacity style={styles.favoriteButton}>
-          <Ionicons name="heart-outline" size={18} color={COLORS.text} />
-        </TouchableOpacity>
-      </View>
-      
-      <View style={styles.cardContent}>
-        <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
-        <View style={styles.cardLocation}>
-          <Ionicons name="location-outline" size={14} color={COLORS.muted} />
-          <Text style={styles.locationText} numberOfLines={1}>{item.location}</Text>
-        </View>
-        <Text style={styles.cardType}>{item.type}</Text>
-        
-        <View style={styles.cardFooter}>
-          <View style={styles.ratingContainer}>
-            <Ionicons name="star" size={12} color="#FFB800" />
-            <Text style={styles.ratingText}>{item.rating}</Text>
-            <Text style={styles.reviewCount}>({item.reviews})</Text>
-          </View>
-          <Text style={styles.priceText}>{item.price}</Text>
-        </View>
-      </View>
-    </TouchableOpacity>
+  const renderScreenCard = ({ item, index }: { item: ScreenDoc; index: number }) => (
+    <ScreenCard
+      screen={item}
+      onPress={handleScreenPress}
+      onFavoritePress={handleFavoritePress}
+      isFavorite={favoriteScreens.has(item.id)}
+      cardWidth={CARD_WIDTH}
+      marginLeft={index % CARDS_PER_ROW === 0 ? 0 : CARD_SPACING}
+    />
   );
 
   return (
@@ -230,7 +178,10 @@ const home = () => {
                   styles.categoryCount,
                   selectedCategory === item.id && styles.categoryCountActive
                 ]}>
-                  {item.count}
+                  {item.id === 'all' ? screens.length : 
+                   item.id === 'digital' ? screens.filter(s => s.screenType.toLowerCase().includes('digital')).length :
+                   item.id === 'led' ? screens.filter(s => s.screenType.toLowerCase().includes('led')).length :
+                   item.id === 'interactive' ? screens.filter(s => s.screenType.toLowerCase().includes('interactive')).length : 0}
                 </Text>
               </TouchableOpacity>
             )}
@@ -251,21 +202,49 @@ const home = () => {
           </TouchableOpacity>
         </View>
 
+        {/* Loading State */}
+        {loading && (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={COLORS.accent} />
+            <Text style={styles.loadingText}>Loading screens...</Text>
+          </View>
+        )}
+
+        {/* Error State */}
+        {error && !loading && (
+          <View style={styles.errorContainer}>
+            <Ionicons name="alert-circle-outline" size={48} color={COLORS.muted} />
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={loadScreens}>
+              <Text style={styles.retryButtonText}>Try Again</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Screens Grid */}
-        <Animated.FlatList
-          ref={flatListRef}
-          data={filteredScreens}
-          numColumns={CARDS_PER_ROW}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.screensContainer}
-          keyExtractor={(item) => item.id}
-          renderItem={renderScreenCard}
-          onScroll={Animated.event(
-            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-            { useNativeDriver: false }
-          )}
-          scrollEventThrottle={16}
-        />
+        {!loading && !error && (
+          <Animated.FlatList
+            ref={flatListRef}
+            data={filteredScreens}
+            numColumns={CARDS_PER_ROW}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.screensContainer}
+            keyExtractor={(item) => item.id}
+            renderItem={renderScreenCard}
+            onScroll={Animated.event(
+              [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+              { useNativeDriver: false }
+            )}
+            scrollEventThrottle={16}
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Ionicons name="search-outline" size={48} color={COLORS.muted} />
+                <Text style={styles.emptyText}>No screens found</Text>
+                <Text style={styles.emptySubtext}>Try adjusting your filters</Text>
+              </View>
+            }
+          />
+        )}
       </View>
     </SafeAreaView>
   );
@@ -418,97 +397,59 @@ const styles = StyleSheet.create({
     paddingHorizontal: SCREEN_PADDING,
     paddingBottom: 100,
   },
-  screenCard: {
-    width: CARD_WIDTH,
-    backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    marginBottom: CARD_SPACING,
-    overflow: 'hidden',
-  },
-  cardImageContainer: {
-    position: 'relative',
-    width: '100%',
-    height: 140,
-  },
-  cardImage: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: COLORS.primary,
-  },
-  featuredBadge: {
-    position: 'absolute',
-    top: 8,
-    left: 8,
-    backgroundColor: COLORS.accent,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  featuredText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: COLORS.background,
-  },
-  favoriteButton: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 32,
-    height: 32,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cardContent: {
-    padding: 12,
-  },
-  cardTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: 4,
-  },
-  cardLocation: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-    gap: 4,
-  },
-  locationText: {
-    fontSize: 12,
-    color: COLORS.muted,
+  loadingContainer: {
     flex: 1,
-  },
-  cardType: {
-    fontSize: 11,
-    color: COLORS.secondary,
-    fontWeight: '500',
-    marginBottom: 8,
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
+    paddingVertical: 40,
   },
-  ratingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  ratingText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: COLORS.text,
-  },
-  reviewCount: {
-    fontSize: 10,
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
     color: COLORS.muted,
+    fontWeight: '500',
   },
-  priceText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: COLORS.accent,
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+    paddingHorizontal: SCREEN_PADDING,
+  },
+  errorText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: COLORS.muted,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: COLORS.accent,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: COLORS.background,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  emptyText: {
+    marginTop: 16,
+    fontSize: 18,
+    color: COLORS.text,
+    fontWeight: '600',
+  },
+  emptySubtext: {
+    marginTop: 8,
+    fontSize: 14,
+    color: COLORS.muted,
   },
 });
 
