@@ -44,6 +44,21 @@ export const ScreenDetailsModal: React.FC<ScreenDetailsModalProps> = ({
   const flatListRef = useRef<FlatList>(null);
   const scrollX = useRef(new Animated.Value(0)).current;
 
+  // Reset full screen state when modal closes or screen changes
+  useEffect(() => {
+    if (!visible) {
+      setFullScreenVisible(false);
+      setCurrentImageIndex(0);
+    }
+  }, [visible]);
+
+  // Reset state when screen changes
+  useEffect(() => {
+    setFullScreenVisible(false);
+    setCurrentImageIndex(0);
+    setOwnerInfo(null);
+  }, [screen?.id]);
+
   const loadOwnerInfo = useCallback(async () => {
     try {
       if (screen?.ownerId) {
@@ -77,8 +92,22 @@ export const ScreenDetailsModal: React.FC<ScreenDetailsModalProps> = ({
   };
 
   const handleImagePress = (index: number) => {
+    console.log('handleImagePress called with index:', index);
     setCurrentImageIndex(index);
     setFullScreenVisible(true);
+    console.log('Full screen modal should be visible now');
+  };
+
+  const handleCloseFullScreen = () => {
+    console.log('Closing full screen modal');
+    setFullScreenVisible(false);
+  };
+
+  const handleCloseModal = () => {
+    console.log('Closing main modal');
+    setFullScreenVisible(false);
+    setCurrentImageIndex(0);
+    onClose();
   };
 
   const onImageScroll = (event: any) => {
@@ -116,8 +145,13 @@ export const ScreenDetailsModal: React.FC<ScreenDetailsModalProps> = ({
   const renderImageItem = ({ item, index }: { item: string; index: number }) => (
     <TouchableOpacity 
       style={styles.imageSlide}
-      onPress={() => handleImagePress(index)}
+      onPress={() => {
+        console.log('Image pressed:', index);
+        handleImagePress(index);
+      }}
       activeOpacity={0.9}
+      delayPressIn={0}
+      delayPressOut={0}
     >
       <Image
         source={{ uri: item }}
@@ -127,19 +161,77 @@ export const ScreenDetailsModal: React.FC<ScreenDetailsModalProps> = ({
     </TouchableOpacity>
   );
 
-  return (
-    <>
+  // Show full-screen modal OR main modal, not both at once
+  if (fullScreenVisible && visible && screen) {
+    return (
       <Modal
-        visible={visible}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={onClose}
+        visible={true}
+        animationType="fade"
+        onRequestClose={handleCloseFullScreen}
+        statusBarTranslucent
+        presentationStyle="fullScreen"
+        transparent={false}
       >
+        <View style={styles.fullScreenContainer}>
+          <TouchableOpacity
+            style={styles.fullScreenClose}
+            onPress={handleCloseFullScreen}
+          >
+            <Ionicons name="close" size={30} color="#FFFFFF" />
+          </TouchableOpacity>
+          
+          <FlatList
+            data={images}
+            renderItem={({ item }) => (
+              <View style={styles.fullScreenImageContainer}>
+                <Image
+                  source={{ uri: item }}
+                  style={styles.fullScreenImage}
+                  resizeMode="contain"
+                />
+              </View>
+            )}
+            keyExtractor={(item, index) => `fullscreen-${index}-${item}`}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            initialScrollIndex={currentImageIndex}
+            getItemLayout={(data, index) => ({
+              length: width,
+              offset: width * index,
+              index,
+            })}
+            onMomentumScrollEnd={(event) => {
+              const index = Math.round(event.nativeEvent.contentOffset.x / width);
+              setCurrentImageIndex(index);
+            }}
+          />
+
+          {/* Full Screen Pagination */}
+          {images.length > 1 && (
+            <View style={styles.fullScreenPagination}>
+              <Text style={styles.fullScreenPaginationText}>
+                {currentImageIndex + 1} of {images.length}
+              </Text>
+            </View>
+          )}
+        </View>
+      </Modal>
+    );
+  }
+
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={handleCloseModal}
+    >
         <StatusBar barStyle="light-content" backgroundColor={COLORS.surface} />
         <SafeAreaView style={styles.container}>
           {/* Header */}
           <View style={styles.header}>
-            <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+            <TouchableOpacity style={styles.closeButton} onPress={handleCloseModal}>
               <Ionicons name="close" size={24} color={COLORS.text} />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Screen Details</Text>
@@ -154,7 +246,7 @@ export const ScreenDetailsModal: React.FC<ScreenDetailsModalProps> = ({
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
             {/* Image Gallery */}
-            <View style={styles.imageContainer}>
+            <View style={styles.imageContainer} pointerEvents="box-none">
               <FlatList
                 ref={flatListRef}
                 data={images}
@@ -168,6 +260,9 @@ export const ScreenDetailsModal: React.FC<ScreenDetailsModalProps> = ({
                   { useNativeDriver: false, listener: onImageScroll }
                 )}
                 scrollEventThrottle={16}
+                scrollEnabled={true}
+                nestedScrollEnabled={true}
+                pointerEvents="auto"
               />
               
               {/* Image Pagination */}
@@ -352,55 +447,7 @@ export const ScreenDetailsModal: React.FC<ScreenDetailsModalProps> = ({
       </SafeAreaView>
     </Modal>
 
-    {/* Full Screen Image Modal */}
-    <Modal
-      visible={fullScreenVisible}
-      animationType="fade"
-      onRequestClose={() => setFullScreenVisible(false)}
-      statusBarTranslucent
-    >
-      <View style={styles.fullScreenContainer}>
-        <TouchableOpacity
-          style={styles.fullScreenClose}
-          onPress={() => setFullScreenVisible(false)}
-        >
-          <Ionicons name="close" size={30} color="#FFFFFF" />
-        </TouchableOpacity>
-        
-        <FlatList
-          data={images}
-          renderItem={({ item }) => (
-            <View style={styles.fullScreenImageContainer}>
-              <Image
-                source={{ uri: item }}
-                style={styles.fullScreenImage}
-                resizeMode="contain"
-              />
-            </View>
-          )}
-          keyExtractor={(item, index) => `fullscreen-${index}-${item}`}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          initialScrollIndex={currentImageIndex}
-          getItemLayout={(data, index) => ({
-            length: width,
-            offset: width * index,
-            index,
-          })}
-        />
-
-        {/* Full Screen Pagination */}
-        {images.length > 1 && (
-          <View style={styles.fullScreenPagination}>
-            <Text style={styles.fullScreenPaginationText}>
-              {currentImageIndex + 1} of {images.length}
-            </Text>
-          </View>
-        )}
-      </View>
-    </Modal>
-    </>
+   
   );
 };
 
@@ -452,6 +499,8 @@ const styles = StyleSheet.create({
   imageSlide: {
     width: width,
     height: 280,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   slideImage: {
     width: '100%',
