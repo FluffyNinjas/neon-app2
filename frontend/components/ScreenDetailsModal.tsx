@@ -110,6 +110,11 @@ export const ScreenDetailsModal: React.FC<ScreenDetailsModalProps> = ({
     onClose();
   };
 
+  const handleOwnerPress = () => {
+    console.log('Owner section pressed, owner ID:', screen?.ownerId);
+    // TODO: Implement owner details card/modal
+  };
+
   const onImageScroll = (event: any) => {
     const slideSize = event.nativeEvent.layoutMeasurement.width;
     const index = event.nativeEvent.contentOffset.x / slideSize;
@@ -227,25 +232,10 @@ export const ScreenDetailsModal: React.FC<ScreenDetailsModalProps> = ({
       presentationStyle="pageSheet"
       onRequestClose={handleCloseModal}
     >
-        <StatusBar barStyle="light-content" backgroundColor={COLORS.surface} />
-        <SafeAreaView style={styles.container}>
-          {/* Header */}
-          <View style={styles.header}>
-            <TouchableOpacity style={styles.closeButton} onPress={handleCloseModal}>
-              <Ionicons name="close" size={24} color={COLORS.text} />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Screen Details</Text>
-            <TouchableOpacity style={styles.favoriteButton} onPress={handleToggleFavorite}>
-              <Ionicons 
-                name={isFavorite ? "heart" : "heart-outline"} 
-                size={24} 
-                color={isFavorite ? "#FF6B6B" : COLORS.text} 
-              />
-            </TouchableOpacity>
-          </View>
-
+        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+        <View style={styles.container}>
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-            {/* Image Gallery */}
+            {/* Image Gallery with Floating Buttons */}
             <View style={styles.imageContainer} pointerEvents="box-none">
               <FlatList
                 ref={flatListRef}
@@ -264,6 +254,20 @@ export const ScreenDetailsModal: React.FC<ScreenDetailsModalProps> = ({
                 nestedScrollEnabled={true}
                 pointerEvents="auto"
               />
+              
+              {/* Floating Close Button */}
+              <TouchableOpacity style={styles.floatingCloseButton} onPress={handleCloseModal}>
+                <Ionicons name="close" size={24} color="#FFFFFF" />
+              </TouchableOpacity>
+
+              {/* Floating Favorite Button */}
+              <TouchableOpacity style={styles.floatingFavoriteButton} onPress={handleToggleFavorite}>
+                <Ionicons 
+                  name={isFavorite ? "heart" : "heart-outline"} 
+                  size={24} 
+                  color={isFavorite ? "#FF6B6B" : "#FFFFFF"} 
+                />
+              </TouchableOpacity>
               
               {/* Image Pagination */}
               {images.length > 1 && (
@@ -327,7 +331,11 @@ export const ScreenDetailsModal: React.FC<ScreenDetailsModalProps> = ({
           {ownerInfo && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Screen Owner</Text>
-              <View style={styles.ownerContainer}>
+              <TouchableOpacity 
+                style={styles.ownerContainer}
+                onPress={handleOwnerPress}
+                activeOpacity={0.7}
+              >
                 <View style={styles.ownerAvatar}>
                   {ownerInfo.photoURL ? (
                     <Image source={{ uri: ownerInfo.photoURL }} style={styles.avatarImage} />
@@ -357,7 +365,8 @@ export const ScreenDetailsModal: React.FC<ScreenDetailsModalProps> = ({
                     )}
                   </View>
                 </View>
-              </View>
+                <Ionicons name="chevron-forward" size={20} color={COLORS.muted} />
+              </TouchableOpacity>
             </View>
           )}
 
@@ -444,7 +453,7 @@ export const ScreenDetailsModal: React.FC<ScreenDetailsModalProps> = ({
             </TouchableOpacity>
           </View>
         )}
-      </SafeAreaView>
+      </View>
     </Modal>
 
    
@@ -494,11 +503,11 @@ const styles = StyleSheet.create({
   imageContainer: {
     position: 'relative',
     width: '100%',
-    height: 280,
+    height: 380,
   },
   imageSlide: {
     width: width,
-    height: 280,
+    height: 380,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -805,6 +814,32 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: COLORS.background,
+  },
+
+  // Floating Button Styles
+  floatingCloseButton: {
+    position: 'absolute',
+    top: 50,
+    left: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  floatingFavoriteButton: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
   },
 
   // Full Screen Modal Styles
