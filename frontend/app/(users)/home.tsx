@@ -16,6 +16,7 @@ import { COLORS } from '../../constants/Colors';
 import { ScreenService } from '../../services/screenService';
 import { wishlistService } from '../../services/wishlistService';
 import { ScreenCard } from '../../components/ScreenCard';
+import { ScreenDetailsModal } from '../../components/ScreenDetailsModal';
 import { ScreenDoc, ScreenId } from '../../shared/models/firestore';
 
 const { width } = Dimensions.get('window');
@@ -43,6 +44,8 @@ const Home = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [favoriteScreens, setFavoriteScreens] = useState<Set<string>>(new Set());
+  const [selectedScreen, setSelectedScreen] = useState<ScreenDoc | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
   
   const scrollY = useRef(new Animated.Value(0)).current;
   const flatListRef = useRef(null);
@@ -79,8 +82,19 @@ const Home = () => {
   };
 
   const handleScreenPress = (screen: ScreenDoc) => {
-    // TODO: Navigate to screen details
-    console.log('Screen pressed:', screen.title);
+    setSelectedScreen(screen);
+    setModalVisible(true);
+  };
+
+  const handleCloseModal = () => {
+    setModalVisible(false);
+    setSelectedScreen(null);
+  };
+
+  const handleBookNow = (screen: ScreenDoc) => {
+    // TODO: Navigate to booking flow
+    console.log('Booking screen:', screen.title);
+    setModalVisible(false);
   };
 
   const handleFavoritePress = async (screen: ScreenDoc) => {
@@ -279,6 +293,16 @@ const Home = () => {
           />
         )}
       </View>
+
+      {/* Screen Details Modal */}
+      <ScreenDetailsModal
+        visible={modalVisible}
+        screen={selectedScreen}
+        onClose={handleCloseModal}
+        onBookNow={handleBookNow}
+        onToggleFavorite={handleFavoritePress}
+        isFavorite={selectedScreen ? favoriteScreens.has(selectedScreen.id) : false}
+      />
     </SafeAreaView>
   );
 };

@@ -15,6 +15,7 @@ import { router } from 'expo-router';
 import { COLORS } from '../../constants/Colors';
 import { wishlistService, WishlistHelpers } from '../../services/wishlistService';
 import { ScreenCard } from '../../components/ScreenCard';
+import { ScreenDetailsModal } from '../../components/ScreenDetailsModal';
 import { ScreenDoc, ScreenId } from '../../shared/models/firestore';
 
 const { width } = Dimensions.get('window');
@@ -28,6 +29,8 @@ const Wishlist = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedScreen, setSelectedScreen] = useState<ScreenDoc | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
 
   // Load wishlist on component mount
   useEffect(() => {
@@ -64,8 +67,19 @@ const Wishlist = () => {
   };
 
   const handleScreenPress = (screen: ScreenDoc) => {
-    // TODO: Navigate to screen details
-    console.log('Wishlist screen pressed:', screen.title);
+    setSelectedScreen(screen);
+    setModalVisible(true);
+  };
+
+  const handleCloseModal = () => {
+    setModalVisible(false);
+    setSelectedScreen(null);
+  };
+
+  const handleBookNow = (screen: ScreenDoc) => {
+    // TODO: Navigate to booking flow
+    console.log('Booking screen:', screen.title);
+    setModalVisible(false);
   };
 
   const handleRemoveFromWishlist = async (screen: ScreenDoc) => {
@@ -176,6 +190,16 @@ const Wishlist = () => {
           }
         />
       )}
+
+      {/* Screen Details Modal */}
+      <ScreenDetailsModal
+        visible={modalVisible}
+        screen={selectedScreen}
+        onClose={handleCloseModal}
+        onBookNow={handleBookNow}
+        onToggleFavorite={handleRemoveFromWishlist}
+        isFavorite={true} // All screens in wishlist are favorites
+      />
     </SafeAreaView>
   );
 };
