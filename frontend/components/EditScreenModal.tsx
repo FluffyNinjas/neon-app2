@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/Colors';
-import { ScreenDoc, ScreenId } from '../shared/models/firestore';
+import { ScreenDoc } from '../shared/models/firestore';
 import { ScreenService } from '../services/screenService';
 
 interface EditScreenModalProps {
@@ -136,7 +136,7 @@ export const EditScreenModal: React.FC<EditScreenModalProps> = ({
       Alert.alert('Success', 'Screen updated successfully!');
       onClose();
     } catch (error) {
-      Alert.alert('Error', 'Failed to update screen. Please try again.');
+      Alert.alert('Error', 'Failed to update screen. Please try again.'+error);
     } finally {
       setIsSaving(false);
     }

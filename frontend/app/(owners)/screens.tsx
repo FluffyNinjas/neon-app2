@@ -39,11 +39,6 @@ const Screens = () => {
     loadOwnerScreens();
   }, []);
 
-  // Filter screens when search query or filter status changes
-  useEffect(() => {
-    applyFilters();
-  }, [screens, searchQuery, filterStatus, applyFilters]);
-
   const loadOwnerScreens = async () => {
     try {
       setError(null);
@@ -88,8 +83,13 @@ const Screens = () => {
     setFilteredScreens(filtered);
   }, [screens, searchQuery, filterStatus]);
 
+  // Filter screens when search query or filter status changes
+  useEffect(() => {
+    applyFilters();
+  }, [screens, searchQuery, filterStatus, applyFilters]);
+
   const handleCreateScreen = () => {
-    router.push('/add-screen/');
+    router.push('/add-screen/' as any);
   };
 
   const handleScreenPress = (screen: ScreenDoc) => {

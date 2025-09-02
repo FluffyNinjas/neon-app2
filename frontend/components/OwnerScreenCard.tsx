@@ -89,7 +89,7 @@ export const OwnerScreenCard: React.FC<OwnerScreenCardProps> = ({
     <TouchableOpacity 
       style={[
         styles.screenCard,
-        cardWidth && { width: cardWidth },
+        cardWidth ? { width: cardWidth } : undefined,
         { marginLeft }
       ]}
       onPress={handlePress}

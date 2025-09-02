@@ -51,7 +51,7 @@ export default function Step7Confirmation() {
   } = useScreenCreationStore();
 
   const handleEdit = (step: number) => {
-    router.push(`/book-screen/step-${step}`);
+    router.push(`/book-screen/step-${step}` as any);
   };
 
   // Convert store availability format to Firestore format
