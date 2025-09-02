@@ -122,29 +122,56 @@ export const ScreenDetailsModal: React.FC<ScreenDetailsModalProps> = ({
     setCurrentImageIndex(roundIndex);
   };
 
+  const formatTimeToAmPm = (time: string) => {
+    const [hours, minutes] = time.split(':');
+    const hour24 = parseInt(hours, 10);
+    const hour12 = hour24 === 0 ? 12 : hour24 > 12 ? hour24 - 12 : hour24;
+    const ampm = hour24 >= 12 ? 'PM' : 'AM';
+    return `${hour12}:${minutes} ${ampm}`;
+  };
+
   const formatAvailability = (availability: any) => {
     const days = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
-    const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const fullDayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     
     return days.map((day, index) => {
       const dayAvailability = availability[day];
-      if (!dayAvailability || dayAvailability.length === 0) {
-        return null;
-      }
+      const hasSlots = dayAvailability && dayAvailability.length > 0;
       
       return (
-        <View key={day} style={styles.availabilityDay}>
-          <Text style={styles.dayName}>{dayNames[index]}</Text>
-          <View style={styles.timeSlots}>
-            {dayAvailability.map((timeSlot: any, slotIndex: number) => (
-              <Text key={slotIndex} style={styles.timeSlot}>
-                {timeSlot.start} - {timeSlot.end}
+        <View key={day} style={[styles.availabilityDayCard, !hasSlots && styles.unavailableDayCard]}>
+          <View style={styles.dayHeader}>
+            <View style={[styles.dayIndicator, hasSlots && styles.dayIndicatorActive]}>
+              <Text style={[styles.dayAbbrev, hasSlots && styles.dayAbbrevActive]}>
+                {dayNames[index]}
               </Text>
-            ))}
+            </View>
+            <Text style={[styles.fullDayName, !hasSlots && styles.unavailableText]}>
+              {fullDayNames[index]}
+            </Text>
           </View>
+          
+          {hasSlots ? (
+            <View style={styles.timeSlotsContainer}>
+              {dayAvailability.map((timeSlot: any, slotIndex: number) => (
+                <View key={slotIndex} style={styles.timeSlotChip}>
+                  <Ionicons name="time-outline" size={14} color={COLORS.accent} />
+                  <Text style={styles.timeSlotText}>
+                    {formatTimeToAmPm(timeSlot.start)} - {formatTimeToAmPm(timeSlot.end)}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.unavailableContainer}>
+              <Ionicons name="close-circle-outline" size={16} color={COLORS.muted} />
+              <Text style={styles.unavailableLabel}>Unavailable</Text>
+            </View>
+          )}
         </View>
       );
-    }).filter(Boolean);
+    });
   };
 
   const renderImageItem = ({ item, index }: { item: string; index: number }) => (
@@ -760,32 +787,88 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   availabilityContainer: {
-    gap: 8,
+    gap: 12,
   },
-  availabilityDay: {
+  availabilityDayCard: {
     backgroundColor: COLORS.surface,
-    padding: 12,
-    borderRadius: 8,
+    padding: 16,
+    borderRadius: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.accent,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
-  dayName: {
-    fontSize: 14,
+  unavailableDayCard: {
+    borderLeftColor: COLORS.muted,
+    opacity: 0.6,
+  },
+  dayHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 12,
+  },
+  dayIndicator: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: COLORS.muted,
+  },
+  dayIndicatorActive: {
+    backgroundColor: COLORS.accent,
+    borderColor: COLORS.accent,
+  },
+  dayAbbrev: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.muted,
+  },
+  dayAbbrevActive: {
+    color: COLORS.background,
+  },
+  fullDayName: {
+    fontSize: 16,
     fontWeight: '600',
     color: COLORS.text,
-    marginBottom: 4,
+    flex: 1,
   },
-  timeSlots: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  unavailableText: {
+    color: COLORS.muted,
+  },
+  timeSlotsContainer: {
     gap: 8,
   },
-  timeSlot: {
-    fontSize: 12,
-    color: COLORS.accent,
-    fontWeight: '500',
+  timeSlotChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: COLORS.primary,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    alignSelf: 'flex-start',
+    gap: 6,
+  },
+  timeSlotText: {
+    fontSize: 14,
+    color: COLORS.accent,
+    fontWeight: '600',
+  },
+  unavailableContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  unavailableLabel: {
+    fontSize: 14,
+    color: COLORS.muted,
+    fontStyle: 'italic',
   },
   bottomSpacing: {
     height: 100,
