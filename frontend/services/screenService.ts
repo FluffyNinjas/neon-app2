@@ -128,4 +128,110 @@ export class ScreenService {
     // Fallback placeholder image
     return 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?q=80&w=400&auto=format&fit=crop';
   }
+
+  // Owner-specific methods
+  static async getOwnerScreens(ownerId?: UserId): Promise<ScreenDoc[]> {
+    try {
+      // Use current user if no ownerId provided
+      const currentUser = auth.currentUser;
+      const targetOwnerId = ownerId || (currentUser?.uid as UserId);
+      
+      if (!targetOwnerId) {
+        throw new Error('No authenticated user or owner ID provided');
+      }
+
+      const screenQuery = query(
+        this.screenCollection,
+        where('ownerId', '==', targetOwnerId),
+        orderBy('createdAt', 'desc')
+      );
+
+      const querySnapshot = await getDocs(screenQuery);
+      return querySnapshot.docs.map(doc => doc.data());
+    } catch (error) {
+      console.error('Error fetching owner screens:', error);
+      throw new Error('Failed to fetch your screens');
+    }
+  }
+
+  static async getScreenById(screenId: ScreenId): Promise<ScreenDoc | null> {
+    try {
+      const screenDocRef = doc(this.screenCollection, screenId);
+      const screenDoc = await getDoc(screenDocRef);
+      
+      if (screenDoc.exists()) {
+        return screenDoc.data();
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error fetching screen:', error);
+      throw new Error('Failed to fetch screen details');
+    }
+  }
+
+  static async updateScreen(screenId: ScreenId, updates: Partial<Omit<ScreenDoc, 'id' | 'createdAt'>>): Promise<void> {
+    try {
+      const screenDocRef = doc(db, ...paths.screen(screenId));
+      const updateData = {
+        ...updates,
+        updatedAt: serverTimestamp(),
+      };
+      
+      await updateDoc(screenDocRef, updateData);
+    } catch (error) {
+      console.error('Error updating screen:', error);
+      throw new Error('Failed to update screen');
+    }
+  }
+
+  static async deleteScreen(screenId: ScreenId): Promise<void> {
+    try {
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        throw new Error('User must be authenticated to delete screens');
+      }
+
+      // First verify the screen belongs to the current user
+      const screen = await this.getScreenById(screenId);
+      if (!screen) {
+        throw new Error('Screen not found');
+      }
+
+      if (screen.ownerId !== currentUser.uid) {
+        throw new Error('You can only delete your own screens');
+      }
+
+      const screenDocRef = doc(db, ...paths.screen(screenId));
+      await deleteDoc(screenDocRef);
+    } catch (error) {
+      console.error('Error deleting screen:', error);
+      throw new Error(`Failed to delete screen: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  static async toggleScreenStatus(screenId: ScreenId): Promise<boolean> {
+    try {
+      const screen = await this.getScreenById(screenId);
+      if (!screen) {
+        throw new Error('Screen not found');
+      }
+
+      const newStatus = !screen.isActive;
+      await this.updateScreen(screenId, { isActive: newStatus });
+      
+      return newStatus;
+    } catch (error) {
+      console.error('Error toggling screen status:', error);
+      throw new Error('Failed to update screen status');
+    }
+  }
+
+  static formatScreenStatus(screen: ScreenDoc): string {
+    return screen.isActive ? 'Active' : 'Inactive';
+  }
+
+  static getScreenStatusColor(screen: ScreenDoc): string {
+    return screen.isActive ? '#10B981' : '#6B7280';
+  }
 }
