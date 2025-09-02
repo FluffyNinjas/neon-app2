@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -10,11 +10,21 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { doc, setDoc, collection } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { useAuthState } from 'react-firebase-hooks/auth';
 import { COLORS } from '../../constants/Colors';
 import { useScreenCreationStore } from '../../stores/useScreenCreationStore';
 import StepLayout from '../../components/StepLayout';
-// Import the screen types configuration
 import { getScreenTypeById } from '../../constants/ScreenTypes';
+import { db, auth, storage } from '../../FirebaseConfig';
+import { 
+  buildNewScreen, 
+  screenConverter, 
+  type WeeklyAvailability,
+  type ScreenId,
+  type UserId 
+} from '../../shared/models/firestore';
 
 const DAYS = [
   { key: 'monday', label: 'Monday', short: 'Mon' },
@@ -27,6 +37,9 @@ const DAYS = [
 ];
 
 export default function Step7Confirmation() {
+  const [user, loading] = useAuthState(auth);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
   const { 
     screenType, 
     location, 
@@ -41,7 +54,76 @@ export default function Step7Confirmation() {
     router.push(`/book-screen/step-${step}`);
   };
 
+  // Convert store availability format to Firestore format
+  const transformAvailabilityToFirestore = (): WeeklyAvailability => {
+    const dayMapping = {
+      monday: 'mon',
+      tuesday: 'tue', 
+      wednesday: 'wed',
+      thursday: 'thu',
+      friday: 'fri',
+      saturday: 'sat',
+      sunday: 'sun'
+    } as const;
+
+    const weeklyAvailability = {
+      timezone: 'America/New_York', // Default timezone - could be made configurable
+      mon: [],
+      tue: [],
+      wed: [],
+      thu: [],
+      fri: [],
+      sat: [],
+      sun: []
+    } as WeeklyAvailability;
+
+    availability.forEach(day => {
+      if (day.isAvailable) {
+        const firestoreDay = dayMapping[day.day];
+        weeklyAvailability[firestoreDay] = [{
+          start: day.startTime, // Already in HH:mm format
+          end: day.endTime
+        }];
+      }
+    });
+
+    return weeklyAvailability;
+  };
+
+  // Upload images to Firebase Storage
+  const uploadImages = async (screenId: string): Promise<string[]> => {
+    const uploadPromises = images.map(async (image, index) => {
+      try {
+        // Convert URI to blob for upload
+        const response = await fetch(image.uri);
+        const blob = await response.blob();
+        
+        // Create storage reference with a structured path
+        const fileName = `${Date.now()}_${index}.jpg`;
+        const storageRef = ref(storage, `screens/${screenId}/images/${fileName}`);
+        
+        // Upload the blob
+        await uploadBytes(storageRef, blob);
+        
+        // Get the download URL
+        const downloadURL = await getDownloadURL(storageRef);
+        return downloadURL;
+      } catch (error) {
+        console.error(`Error uploading image ${index}:`, error);
+        throw error;
+      }
+    });
+
+    // Wait for all uploads to complete
+    return Promise.all(uploadPromises);
+  };
+
   const handleSubmit = () => {
+    if (!user) {
+      Alert.alert('Error', 'You must be logged in to create a screen listing.');
+      return;
+    }
+
     Alert.alert(
       'Submit Screen Listing',
       'Are you sure you want to submit your screen for approval? You can edit it later from your dashboard.',
@@ -50,21 +132,72 @@ export default function Step7Confirmation() {
         {
           text: 'Yes',
           style: 'default',
-          onPress: () => {
-            // In a real app, this would submit to the server
-            Alert.alert(
-              'Success!',
-              'Your screen has been submitted for review. You\'ll receive a notification once it\'s approved.',
-              [
-                {
-                  text: 'OK',
-                  onPress: () => {
-                    resetStore();
-                    router.replace('/(owners)/screens');
-                  },
+          onPress: async () => {
+            setIsSubmitting(true);
+            
+            try {
+              // Create a new screen document
+              const screenRef = doc(collection(db, 'screens'));
+              const screenId = screenRef.id as ScreenId;
+              
+              // Upload images to Firebase Storage first
+              const uploadedImageUrls = await uploadImages(screenId);
+              
+              // Transform store data to Firestore format
+              const screenData = buildNewScreen({
+                ownerId: user.uid as UserId,
+                title: details.title,
+                description: details.description,
+                screenType: screenType,
+                address: location.address,
+                coordinates: {
+                  lat: location.latitude || 0, // Default to 0 if not set
+                  lng: location.longitude || 0
                 },
-              ]
-            );
+                photos: uploadedImageUrls, // Now using Firebase Storage URLs
+                dayPrice: Math.round(parseFloat(dailyPrice) * 100), // Convert to cents
+                isActive: true,
+                availability: transformAvailabilityToFirestore(),
+                featured: false
+              });
+
+              // Save to Firestore
+              await setDoc(screenRef.withConverter(screenConverter), {
+                id: screenId,
+                ...screenData
+              });
+
+              Alert.alert(
+                'Success!',
+                'Your screen has been submitted for review. You\'ll receive a notification once it\'s approved.',
+                [
+                  {
+                    text: 'OK',
+                    onPress: () => {
+                      resetStore();
+                      router.replace('/(owners)/screens');
+                    },
+                  },
+                ]
+              );
+            } catch (error) {
+              console.error('Error creating screen:', error);
+              
+              let errorMessage = 'Failed to submit your screen listing. Please try again.';
+              
+              // Provide more specific error messages
+              if (error instanceof Error) {
+                if (error.message.includes('storage')) {
+                  errorMessage = 'Failed to upload images. Please check your internet connection and try again.';
+                } else if (error.message.includes('firestore') || error.message.includes('permission')) {
+                  errorMessage = 'Failed to save screen data. Please try again.';
+                }
+              }
+              
+              Alert.alert('Error', errorMessage, [{ text: 'OK' }]);
+            } finally {
+              setIsSubmitting(false);
+            }
           },
         },
       ]
@@ -92,7 +225,8 @@ export default function Step7Confirmation() {
       totalSteps={7}
       title="Review your listing"
       onNext={handleSubmit}
-      nextButtonText="Submit Listing"
+      nextButtonText={isSubmitting ? "Submitting..." : "Submit Listing"}
+      nextButtonDisabled={isSubmitting || loading}
     >
       <ScrollView showsVerticalScrollIndicator={false} style={styles.container}>
         <Text style={styles.subtitle}>

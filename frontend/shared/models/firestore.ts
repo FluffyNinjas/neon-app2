@@ -19,6 +19,7 @@ import {
   serverTimestamp
 } from 'firebase/firestore';
 
+
   
   // ------------------------------------------------------------
   // Branded IDs & Common Types
@@ -64,6 +65,8 @@ import {
     | 'refunded';
   
   export type ContentType = 'image' | 'video';
+
+
   
   // ------------------------------------------------------------
   // users/{userId}
@@ -107,18 +110,17 @@ import {
     ownerId: UserId;
     title: string;
     description?: string;
+    screenType: string;
     address: string;
     coordinates: LatLng;
     photos: string[]; // Storage URLs
     dayPrice: number; // cents
-    currency: Currency;
     isActive: boolean;
-    amenities?: string[];
-    categories?: string[];
     ratingAvg?: number; // 0..5
     ratingCount?: number;
     // NEW: weekly time availability per weekday
     availability: WeeklyAvailability; // required for screens
+    featured: false;
   }
   
   export type NewScreenDoc = Omit<ScreenDoc, 'id' | keyof CreatedUpdated> & CreatableTimestamps;

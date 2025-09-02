@@ -11,7 +11,7 @@ export default function screens() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>Screen Bookings</Text>
+      <Text style={styles.text}>My Screens</Text>
       
       {/* Floating Action Button */}
       <TouchableOpacity 
