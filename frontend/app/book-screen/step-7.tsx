@@ -46,7 +46,7 @@ export default function Step7Confirmation() {
     details, 
     dailyPrice, 
     images, 
-    availability, 
+    availability,
     resetStore 
   } = useScreenCreationStore();
 
@@ -149,7 +149,12 @@ export default function Step7Confirmation() {
                 title: details.title,
                 description: details.description,
                 screenType: screenType,
+                screenSize: details.screenSize,
+                screenResolution: details.resolution,
                 address: location.address,
+                zipCode: location.zipCode,
+                city: location.city,
+                state: location.state,
                 coordinates: {
                   lat: location.latitude || 0, // Default to 0 if not set
                   lng: location.longitude || 0

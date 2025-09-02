@@ -99,24 +99,27 @@ import { Timestamp,
     sun: DailyAvailability;
   }
   
-  
   export interface ScreenDoc extends CreatedUpdated {
     id: ScreenId; // virtual: doc id
     ownerId: UserId;
     title: string;
     description?: string;
+    screenType: string;
+    screenResolution?: string,
+    screenSize: string,
     address: string;
     coordinates: LatLng;
     photos: string[]; // Storage URLs
     dayPrice: number; // cents
-    currency: Currency;
     isActive: boolean;
-    amenities?: string[];
-    categories?: string[];
     ratingAvg?: number; // 0..5
     ratingCount?: number;
+    zipCode: string;
+    state: string;
+    city: string;
     // NEW: weekly time availability per weekday
     availability: WeeklyAvailability; // required for screens
+    featured: false;
   }
   
   export type NewScreenDoc = Omit<ScreenDoc, 'id' | keyof CreatedUpdated> & CreatableTimestamps;

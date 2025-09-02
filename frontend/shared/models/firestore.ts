@@ -111,6 +111,8 @@ import {
     title: string;
     description?: string;
     screenType: string;
+    screenResolution?: string,
+    screenSize: string,
     address: string;
     coordinates: LatLng;
     photos: string[]; // Storage URLs
@@ -118,6 +120,9 @@ import {
     isActive: boolean;
     ratingAvg?: number; // 0..5
     ratingCount?: number;
+    zipCode: string;
+    state: string;
+    city: string;
     // NEW: weekly time availability per weekday
     availability: WeeklyAvailability; // required for screens
     featured: false;
