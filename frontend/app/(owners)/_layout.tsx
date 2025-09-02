@@ -5,7 +5,7 @@ import { COLORS } from "../../constants/Colors";
 export default function OwnersTabLayout() {
   return (
     <Tabs screenOptions={{ 
-      headerShown: true,
+      headerShown: false,
       headerStyle: {
         backgroundColor: COLORS.surface,
       },

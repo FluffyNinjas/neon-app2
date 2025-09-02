@@ -97,10 +97,10 @@ const Screens = () => {
     console.log('Owner screen pressed:', screen.title);
   };
 
-  const handleEditScreen = (screen: ScreenDoc) => {
+ // const handleEditScreen = (screen: ScreenDoc) => {
     // TODO: Navigate to edit screen
-    Alert.alert('Edit Screen', `Editing "${screen.title}" - Coming soon!`);
-  };
+   // Alert.alert('Edit Screen', `Editing "${screen.title}" - Coming soon!`);
+//  };
 
   const handleDeleteScreen = async (screen: ScreenDoc) => {
     try {
@@ -139,7 +139,7 @@ const Screens = () => {
     <OwnerScreenCard
       screen={item}
       onPress={handleScreenPress}
-      onEdit={handleEditScreen}
+      //onEdit={handleEditScreen}
       onDelete={handleDeleteScreen}
       onToggleStatus={handleToggleStatus}
       cardWidth={CARD_WIDTH}

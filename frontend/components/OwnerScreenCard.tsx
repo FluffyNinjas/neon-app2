@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/Colors';
 import { ScreenDoc } from '../shared/models/firestore';
 import { ScreenService } from '../services/screenService';
+import { EditScreenModal } from './EditScreenModal';
 
 interface OwnerScreenCardProps {
   screen: ScreenDoc;
@@ -31,12 +32,19 @@ export const OwnerScreenCard: React.FC<OwnerScreenCardProps> = ({
   cardWidth,
   marginLeft = 0,
 }) => {
+  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+  const [currentScreen, setCurrentScreen] = useState(screen);
   const handlePress = () => {
     onPress?.(screen);
   };
 
   const handleEdit = () => {
-    onEdit?.(screen);
+    setIsEditModalVisible(true);
+  };
+
+  const handleEditSave = (updatedScreen: ScreenDoc) => {
+    setCurrentScreen(updatedScreen);
+    onEdit?.(updatedScreen);
   };
 
   const handleDelete = () => {
@@ -97,15 +105,15 @@ export const OwnerScreenCard: React.FC<OwnerScreenCardProps> = ({
         {/* Status Badge */}
         <View style={[
           styles.statusBadge,
-          { backgroundColor: ScreenService.getScreenStatusColor(screen) }
+          { backgroundColor: ScreenService.getScreenStatusColor(currentScreen) }
         ]}>
           <Text style={styles.statusText}>
-            {ScreenService.formatScreenStatus(screen)}
+            {ScreenService.formatScreenStatus(currentScreen)}
           </Text>
         </View>
 
         {/* Featured Badge */}
-        {screen.featured && (
+        {currentScreen.featured && (
           <View style={styles.featuredBadge}>
             <Text style={styles.featuredText}>Featured</Text>
           </View>
@@ -119,7 +127,7 @@ export const OwnerScreenCard: React.FC<OwnerScreenCardProps> = ({
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
             <Ionicons 
-              name={screen.isActive ? "pause" : "play"} 
+              name={currentScreen.isActive ? "pause" : "play"} 
               size={16} 
               color={COLORS.background} 
             />
@@ -153,31 +161,38 @@ export const OwnerScreenCard: React.FC<OwnerScreenCardProps> = ({
       
       <View style={styles.cardContent}>
         <Text style={styles.cardTitle} numberOfLines={1}>
-          {screen.title}
+          {currentScreen.title}
         </Text>
         <View style={styles.cardLocation}>
           <Ionicons name="location-outline" size={14} color={COLORS.muted} />
           <Text style={styles.locationText} numberOfLines={1}>
-            {ScreenService.formatLocation(screen)}
+            {ScreenService.formatLocation(currentScreen)}
           </Text>
         </View>
-        <Text style={styles.cardType}>{screen.screenType}</Text>
+        <Text style={styles.cardType}>{currentScreen.screenType}</Text>
         
         <View style={styles.cardFooter}>
           <View style={styles.ratingContainer}>
             <Ionicons name="star" size={12} color="#FFB800" />
             <Text style={styles.ratingText}>
-              {screen.ratingAvg ? screen.ratingAvg.toFixed(1) : '0.0'}
+              {currentScreen.ratingAvg ? currentScreen.ratingAvg.toFixed(1) : '0.0'}
             </Text>
             <Text style={styles.reviewCount}>
-              ({screen.ratingCount || 0})
+              ({currentScreen.ratingCount || 0})
             </Text>
           </View>
           <Text style={styles.priceText}>
-            {ScreenService.formatPrice(screen.dayPrice)}
+            {ScreenService.formatPrice(currentScreen.dayPrice)}
           </Text>
         </View>
       </View>
+      
+      <EditScreenModal
+        visible={isEditModalVisible}
+        screen={currentScreen}
+        onClose={() => setIsEditModalVisible(false)}
+        onSave={handleEditSave}
+      />
     </TouchableOpacity>
   );
 };
