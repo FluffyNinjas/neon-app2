@@ -4,10 +4,8 @@ import {
   Text,
   StyleSheet,
   SafeAreaView,
-  ScrollView,
   TextInput,
   TouchableOpacity,
-  Image,
   FlatList,
   Dimensions,
   Animated,
@@ -16,8 +14,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../constants/Colors';
 import { ScreenService } from '../../services/screenService';
+import { wishlistService } from '../../services/wishlistService';
 import { ScreenCard } from '../../components/ScreenCard';
-import { ScreenDoc } from '../../shared/models/firestore';
+import { ScreenDoc, ScreenId } from '../../shared/models/firestore';
 
 const { width } = Dimensions.get('window');
 const SCREEN_PADDING = 16;
@@ -37,7 +36,7 @@ const CATEGORIES = [
   { id: 'interactive', name: 'Interactive' },
 ];
 
-const home = () => {
+const Home = () => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [screens, setScreens] = useState<ScreenDoc[]>([]);
@@ -48,9 +47,10 @@ const home = () => {
   const scrollY = useRef(new Animated.Value(0)).current;
   const flatListRef = useRef(null);
 
-  // Fetch screens on component mount
+  // Fetch screens and wishlist on component mount
   useEffect(() => {
     loadScreens();
+    loadWishlistStatus();
   }, []);
 
   const loadScreens = async () => {
@@ -67,19 +67,52 @@ const home = () => {
     }
   };
 
+  const loadWishlistStatus = async () => {
+    try {
+      const wishlistScreens = await wishlistService.getUserWishlist();
+      const wishlistIds = new Set(wishlistScreens.map(screen => screen.id));
+      setFavoriteScreens(wishlistIds);
+    } catch (error) {
+      console.error('Error loading wishlist status:', error);
+      // Don't show error to user for wishlist - it's not critical
+    }
+  };
+
   const handleScreenPress = (screen: ScreenDoc) => {
     // TODO: Navigate to screen details
     console.log('Screen pressed:', screen.title);
   };
 
-  const handleFavoritePress = (screen: ScreenDoc) => {
-    const newFavorites = new Set(favoriteScreens);
-    if (newFavorites.has(screen.id)) {
-      newFavorites.delete(screen.id);
-    } else {
-      newFavorites.add(screen.id);
+  const handleFavoritePress = async (screen: ScreenDoc) => {
+    try {
+      // Optimistically update the UI
+      const newFavorites = new Set(favoriteScreens);
+      const wasInWishlist = newFavorites.has(screen.id);
+      
+      if (wasInWishlist) {
+        newFavorites.delete(screen.id);
+      } else {
+        newFavorites.add(screen.id);
+      }
+      setFavoriteScreens(newFavorites);
+
+      // Update Firestore
+      const isNowInWishlist = await wishlistService.toggleWishlist(screen.id as ScreenId);
+      
+      // Sync state with actual Firestore result in case of discrepancy
+      const actualFavorites = new Set(favoriteScreens);
+      if (isNowInWishlist) {
+        actualFavorites.add(screen.id);
+      } else {
+        actualFavorites.delete(screen.id);
+      }
+      setFavoriteScreens(actualFavorites);
+      
+    } catch (error) {
+      console.error('Error toggling wishlist:', error);
+      // Revert optimistic update on error
+      loadWishlistStatus();
     }
-    setFavoriteScreens(newFavorites);
   };
 
   // Header animation values
@@ -453,4 +486,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default home;
+export default Home;

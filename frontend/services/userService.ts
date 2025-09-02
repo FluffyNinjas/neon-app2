@@ -8,14 +8,14 @@ import {
   Unsubscribe,
   serverTimestamp
 } from 'firebase/firestore';
-import { auth, db } from '../../FirebaseConfig';
+import { auth, db } from '../FirebaseConfig';
 import { 
   UserDoc, 
   UserId,
   UserType,
   buildNewUser,
   paths
-} from '../../shared/models/firestore';
+} from '../shared/models/firestore';
 
 export interface UserService {
   getCurrentUser(): Promise<UserDoc | null>;
@@ -239,4 +239,4 @@ export const UserHelpers = {
 };
 
 // Export types for convenience
-export type { UserDoc, NewUserDoc, UserId, UserType } from '../../shared/models/firestore';
+export type { UserDoc, NewUserDoc, UserId, UserType } from '../shared/models/firestore';
