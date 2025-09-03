@@ -13,10 +13,10 @@ import { useRouter } from 'expo-router';
 import { COLORS } from '../../constants/Colors';
 import { useBookingStore } from '../../stores/bookingStore';
 
-export default function BookingAdvertisement() {
+export default function BookingConfirmation() {
   const router = useRouter();
   
-  const { screen, selectedDates, clearBooking } = useBookingStore();
+  const { screen, selectedDates, totalAmount, clearBooking } = useBookingStore();
   
   // If no screen data available, redirect to information page
   if (!screen) {
@@ -55,23 +55,16 @@ export default function BookingAdvertisement() {
         <TouchableOpacity style={styles.exitButton} onPress={handleExit}>
           <Ionicons name="close" size={24} color={COLORS.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Select Advertisement</Text>
+        <Text style={styles.headerTitle}>Confirmation</Text>
         <View style={{ width: 40 }} />
       </View>
 
       <View style={styles.content}>
-        <Text style={styles.title}>Choose Your Advertisement</Text>
+        <Text style={styles.title}>Booking Confirmation</Text>
         <Text style={styles.subtitle}>Screen: {screen.title}</Text>
         <Text style={styles.subtitle}>Selected dates: {selectedDates.length}</Text>
-        <Text style={styles.subtitle}>Total: ${((screen.dayPrice * selectedDates.length) / 100).toFixed(0)}</Text>
-        <Text style={styles.placeholder}>Advertisement selection coming soon...</Text>
-        
-        <TouchableOpacity 
-          style={styles.continueButton}
-          onPress={() => router.push('/booking-screen/confirmation')}
-        >
-          <Text style={styles.continueText}>Continue to Confirmation</Text>
-        </TouchableOpacity>
+        <Text style={styles.subtitle}>Total: ${(totalAmount / 100).toFixed(0)}</Text>
+        <Text style={styles.placeholder}>Payment and confirmation coming soon...</Text>
       </View>
     </SafeAreaView>
   );
@@ -125,19 +118,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: COLORS.secondary,
     fontStyle: 'italic',
-    marginBottom: 32,
-  },
-  continueButton: {
-    backgroundColor: COLORS.accent,
-    paddingHorizontal: 32,
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  continueText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.background,
   },
 });

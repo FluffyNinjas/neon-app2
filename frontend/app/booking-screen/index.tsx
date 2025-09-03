@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,21 +7,69 @@ import {
   ScrollView,
   SafeAreaView,
   StatusBar,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { COLORS } from '../../constants/Colors';
+import { ScreenService } from '../../services/screenService';
+import { ScreenId } from '../../shared/models/firestore';
+import { useBookingStore } from '../../stores/bookingStore';
 
 export default function BookingInformation() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const { screenId, screenTitle } = params;
 
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  const { screen, setScreen, clearBooking } = useBookingStore();
+
+  useEffect(() => {
+    initializeBooking();
+  }, [screenId]);
+
+  const initializeBooking = async () => {
+    if (!screenId) {
+      setError('No screen selected');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Clear any previous booking data
+      clearBooking();
+      
+      // Load screen data
+      const screenData = await ScreenService.getScreenById(screenId as ScreenId);
+      if (!screenData) {
+        setError('Screen not found');
+        return;
+      }
+      
+      // Initialize the booking store
+      setScreen(screenId as ScreenId, screenData);
+      
+    } catch (err) {
+      console.error('Error loading screen:', err);
+      setError('Failed to load screen information');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleGetStarted = () => {
-    router.push({
-      pathname: '/booking-screen/dates',
-      params: { screenId, screenTitle }
-    });
+    if (screen) {
+      router.push('/booking-screen/dates');
+    }
+  };
+
+  const handleRetry = () => {
+    initializeBooking();
   };
 
   const handleExit = () => {
@@ -49,6 +97,38 @@ export default function BookingInformation() {
       color: COLORS.primary,
     },
   ];
+
+  // Loading state
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor={COLORS.background} />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.accent} />
+          <Text style={styles.loadingText}>Loading screen information...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Error state
+  if (error || !screen) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor={COLORS.background} />
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle-outline" size={48} color={COLORS.muted} />
+          <Text style={styles.errorText}>{error || 'Screen not found'}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={handleRetry}>
+            <Text style={styles.retryText}>Try Again</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.exitButtonSecondary} onPress={handleExit}>
+            <Text style={styles.exitTextSecondary}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -330,5 +410,54 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: COLORS.background,
+  },
+  
+  // Loading and Error States
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: COLORS.muted,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: COLORS.muted,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  retryButton: {
+    backgroundColor: COLORS.accent,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  retryText: {
+    color: COLORS.background,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  exitButtonSecondary: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+  },
+  exitTextSecondary: {
+    color: COLORS.text,
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

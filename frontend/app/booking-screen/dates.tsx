@@ -9,13 +9,14 @@ import {
   ScrollView,
   FlatList,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { COLORS } from '../../constants/Colors';
 import { ScreenService } from '../../services/screenService';
-import { ScreenDoc, ScreenId, IsoDate, WeeklyAvailability, DailyAvailability } from '../../shared/models/firestore';
-import { useBookingStore } from '../../store/bookingStore';
+import { ScreenId, IsoDate, WeeklyAvailability, DailyAvailability } from '../../shared/models/firestore';
+import { useBookingStore } from '../../stores/bookingStore';
 
 interface CalendarDay {
   date: Date;
@@ -42,65 +43,47 @@ const DAY_MAP: { [key: number]: Exclude<keyof WeeklyAvailability, 'timezone'> } 
 
 export default function BookingDates() {
   const router = useRouter();
-  const params = useLocalSearchParams();
-  const { screenId, screenTitle } = params;
-
-  const [screen, setScreen] = useState<ScreenDoc | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [existingBookings, setExistingBookings] = useState<Set<IsoDate>>(new Set());
+  const [loading, setLoading] = useState(true);
 
-  // Zustand store
+  // Zustand store - screen data should already be loaded
   const {
+    screen,
+    screenId,
     selectedDates,
-    setScreen: setBookingScreen,
     addSelectedDate,
     removeSelectedDate,
     clearSelectedDates,
+    clearBooking,
   } = useBookingStore();
 
   useEffect(() => {
-    loadScreenData();
-  }, [screenId]);
+    if (screen && screenId) {
+      loadExistingBookings(screenId);
+    } else {
+      // If no screen data, redirect back to information page
+      router.replace('/booking-screen' as any);
+    }
+  }, [screen, screenId]);
 
-  const loadScreenData = async () => {
-    if (!screenId) return;
-    
+
+  const loadExistingBookings = async (screenId: ScreenId) => {
     try {
       setLoading(true);
-      setError(null);
-      
-      const screenData = await ScreenService.getScreenById(screenId as ScreenId);
-      if (!screenData) {
-        setError('Screen not found');
-        return;
-      }
-      
-      setScreen(screenData);
-      setBookingScreen(screenId as ScreenId, screenData);
-      
-      // TODO: Load existing bookings for this screen
-      // For now, we'll use mock data
-      await loadExistingBookings(screenId as ScreenId);
-      
-    } catch (err) {
-      console.error('Error loading screen data:', err);
-      setError('Failed to load screen information');
+      // TODO: Implement actual booking service call
+      // For now, mock some existing bookings
+      const mockBookings: Set<IsoDate> = new Set([
+        '2025-01-10',
+        '2025-01-15',
+        '2025-01-25'
+      ]);
+      setExistingBookings(mockBookings);
+    } catch (error) {
+      console.error('Error loading bookings:', error);
     } finally {
       setLoading(false);
     }
-  };
-
-  const loadExistingBookings = async (screenId: ScreenId) => {
-    // TODO: Implement actual booking service call
-    // For now, mock some existing bookings
-    const mockBookings: Set<IsoDate> = new Set([
-      '2025-01-10',
-      '2025-01-15',
-      '2025-01-25'
-    ]);
-    setExistingBookings(mockBookings);
   };
 
   const formatDate = (date: IsoDate): string => {
@@ -187,16 +170,30 @@ export default function BookingDates() {
   };
 
   const handleExit = () => {
-    router.back();
+    Alert.alert(
+      'Exit Booking',
+      'Are you sure you want to exit? Your progress will not be saved.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Exit',
+          style: 'destructive',
+          onPress: () => {
+            clearBooking();
+            router.replace('/(users)/home');
+          },
+        },
+      ],
+      { cancelable: false }
+    );
   };
 
   const handleContinue = () => {
     if (selectedDates.length === 0) return;
-    
-    router.push({
-      pathname: '/booking-screen/advertisement',
-      params: { screenId, screenTitle }
-    });
+    router.push('/booking-screen/advertisement');
   };
 
   const renderCalendarDay = ({ item }: { item: CalendarDay }) => {
@@ -245,6 +242,19 @@ export default function BookingDates() {
     );
   };
 
+  // If no screen data available, redirect to information page
+  if (!screen || !screenId) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor={COLORS.background} />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.accent} />
+          <Text style={styles.loadingText}>Redirecting...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -257,20 +267,6 @@ export default function BookingDates() {
     );
   }
 
-  if (error || !screen) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor={COLORS.background} />
-        <View style={styles.errorContainer}>
-          <Ionicons name="alert-circle-outline" size={48} color={COLORS.muted} />
-          <Text style={styles.errorText}>{error || 'Screen not found'}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={loadScreenData}>
-            <Text style={styles.retryText}>Try Again</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -296,7 +292,7 @@ export default function BookingDates() {
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Screen Info */}
         <View style={styles.screenInfo}>
-          <Text style={styles.screenTitle}>{screenTitle}</Text>
+          <Text style={styles.screenTitle}>{screen.title}</Text>
           <Text style={styles.screenPrice}>{ScreenService.formatPrice(screen.dayPrice)}</Text>
         </View>
 
