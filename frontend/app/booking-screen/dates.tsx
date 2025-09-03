@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { COLORS } from '../../constants/Colors';
 import { ScreenService } from '../../services/screenService';
+import { BookingService } from '../../services/bookingService';
 import { ScreenId, IsoDate, WeeklyAvailability, DailyAvailability } from '../../shared/models/firestore';
 import { useBookingStore } from '../../stores/bookingStore';
 
@@ -44,8 +45,9 @@ const DAY_MAP: { [key: number]: Exclude<keyof WeeklyAvailability, 'timezone'> } 
 export default function BookingDates() {
   const router = useRouter();
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [existingBookings, setExistingBookings] = useState<Set<IsoDate>>(new Set());
+  const [existingBookings, setExistingBookings] = useState<IsoDate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Zustand store - screen data should already be loaded
   const {
@@ -71,16 +73,16 @@ export default function BookingDates() {
   const loadExistingBookings = async (screenId: ScreenId) => {
     try {
       setLoading(true);
-      // TODO: Implement actual booking service call
-      // For now, mock some existing bookings
-      const mockBookings: Set<IsoDate> = new Set([
-        '2025-01-10',
-        '2025-01-15',
-        '2025-01-25'
-      ]);
-      setExistingBookings(mockBookings);
-    } catch (error) {
-      console.error('Error loading bookings:', error);
+      setError(null);
+      // Fetch real booking data from Firestore
+      const bookedDates = await BookingService.getScreenBookings(screenId);
+      setExistingBookings(bookedDates);
+      console.log(`Loaded ${bookedDates.length} booked dates for screen:`, bookedDates);
+    } catch (err) {
+      console.error('Error loading bookings:', err);
+      setError('Failed to load booking information. Calendar may not show all booked dates.');
+      // Set empty array on error so calendar still shows
+      setExistingBookings([]);
     } finally {
       setLoading(false);
     }
@@ -119,7 +121,7 @@ export default function BookingDates() {
       const isAvailableBySchedule = dayAvailability && dayAvailability.length > 0;
       
       // Check if day is already booked
-      const isBooked = existingBookings.has(isoDate);
+      const isBooked = existingBookings.includes(isoDate);
       
       // Day is available if: not past, not today, available by schedule, not booked, and in current or future months
       const isAvailable = !isPast && !isToday && isAvailableBySchedule && !isBooked && isCurrentMonth;
@@ -296,6 +298,14 @@ export default function BookingDates() {
           <Text style={styles.screenTitle}>{screen.title}</Text>
           <Text style={styles.screenPrice}>{ScreenService.formatPrice(screen.dayPrice)}</Text>
         </View>
+
+        {/* Error Message */}
+        {error && (
+          <View style={styles.errorBanner}>
+            <Ionicons name="warning-outline" size={16} color="#FF6B35" />
+            <Text style={styles.errorBannerText}>{error}</Text>
+          </View>
+        )}
 
         {/* Selected Dates Summary */}
         {selectedDates.length > 0 && (
@@ -481,6 +491,24 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: COLORS.accent,
     fontWeight: '600',
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 20,
+    marginBottom: 16,
+    padding: 12,
+    backgroundColor: '#FFF3E0',
+    borderRadius: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#FF6B35',
+    gap: 8,
+  },
+  errorBannerText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#BF360C',
+    lineHeight: 18,
   },
   selectedSummary: {
     margin: 20,

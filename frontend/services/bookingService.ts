@@ -1,6 +1,7 @@
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
 import { auth, db } from '../FirebaseConfig';
 import { 
+  BookingDoc,
   bookingConverter, 
   UserId, 
   BookingId, 
@@ -60,6 +61,33 @@ export class BookingService {
       console.error('Error creating booking:', error);
       console.error('Booking request data:', request);
       throw new Error('Failed to create booking');
+    }
+  }
+
+  // Get existing bookings for a screen (accepted bookings only)
+  static async getScreenBookings(screenId: ScreenId): Promise<IsoDate[]> {
+    try {
+      const bookingsQuery = query(
+        this.getBookingsCollection(),
+        where('screenId', '==', screenId),
+        where('status', 'in', ['accepted', 'live', 'completed'])
+      );
+
+      const querySnapshot = await getDocs(bookingsQuery);
+      const bookedDates: Set<IsoDate> = new Set();
+
+      querySnapshot.docs.forEach(doc => {
+        const booking = doc.data() as BookingDoc;
+        // Add all dates from this booking to the set
+        booking.dates.forEach(date => {
+          bookedDates.add(date);
+        });
+      });
+
+      return Array.from(bookedDates);
+    } catch (error) {
+      console.error('Error fetching screen bookings:', error);
+      throw new Error('Failed to load existing bookings');
     }
   }
 }
