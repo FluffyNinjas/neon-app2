@@ -77,9 +77,14 @@ const Wishlist = () => {
   };
 
   const handleBookNow = (screen: ScreenDoc) => {
-    // TODO: Navigate to booking flow
-    console.log('Booking screen:', screen.title);
     setModalVisible(false);
+    router.push({
+      pathname: '/booking-screen',
+      params: {
+        screenId: screen.id,
+        screenTitle: screen.title,
+      }
+    });
   };
 
   const handleRemoveFromWishlist = async (screen: ScreenDoc) => {

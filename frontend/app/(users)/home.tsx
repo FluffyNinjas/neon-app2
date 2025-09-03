@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { COLORS } from '../../constants/Colors';
 import { ScreenService } from '../../services/screenService';
 import { wishlistService } from '../../services/wishlistService';
@@ -38,6 +39,7 @@ const CATEGORIES = [
 ];
 
 const Home = () => {
+  const router = useRouter();
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [screens, setScreens] = useState<ScreenDoc[]>([]);
@@ -92,9 +94,14 @@ const Home = () => {
   };
 
   const handleBookNow = (screen: ScreenDoc) => {
-    // TODO: Navigate to booking flow
-    console.log('Booking screen:', screen.title);
     setModalVisible(false);
+    router.push({
+      pathname: '/booking-screen',
+      params: {
+        screenId: screen.id,
+        screenTitle: screen.title,
+      }
+    });
   };
 
   const handleFavoritePress = async (screen: ScreenDoc) => {
