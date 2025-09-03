@@ -1,4 +1,4 @@
-import { collection, addDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, getDocs, doc, updateDoc, orderBy } from 'firebase/firestore';
 import { auth, db } from '../FirebaseConfig';
 import { 
   BookingDoc,
@@ -88,6 +88,47 @@ export class BookingService {
     } catch (error) {
       console.error('Error fetching screen bookings:', error);
       throw new Error('Failed to load existing bookings');
+    }
+  }
+
+  // Get all bookings for the current user
+  static async getUserBookings(): Promise<BookingDoc[]> {
+    const user = auth.currentUser;
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+
+    try {
+      const bookingsQuery = query(
+        this.getBookingsCollection(),
+        where('renterId', '==', user.uid),
+        orderBy('createdAt', 'desc')
+      );
+
+      const querySnapshot = await getDocs(bookingsQuery);
+      return querySnapshot.docs.map(doc => doc.data());
+    } catch (error) {
+      console.error('Error fetching user bookings:', error);
+      throw new Error('Failed to load your bookings');
+    }
+  }
+
+  // Cancel a booking (only allowed for requested status)
+  static async cancelBooking(bookingId: BookingId): Promise<void> {
+    const user = auth.currentUser;
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+
+    try {
+      const bookingRef = doc(this.getBookingsCollection(), bookingId);
+      await updateDoc(bookingRef, {
+        status: 'cancelled' as BookingStatus,
+        updatedAt: serverTimestamp(),
+      });
+    } catch (error) {
+      console.error('Error cancelling booking:', error);
+      throw new Error('Failed to cancel booking');
     }
   }
 }
