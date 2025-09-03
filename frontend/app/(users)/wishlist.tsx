@@ -16,7 +16,8 @@ import { COLORS } from '../../constants/Colors';
 import { wishlistService, WishlistHelpers } from '../../services/wishlistService';
 import { ScreenCard } from '../../components/ScreenCard';
 import { ScreenDetailsModal } from '../../components/ScreenDetailsModal';
-import { ScreenDoc, ScreenId } from '../../shared/models/firestore';
+import { ScreenDoc } from '../../shared/models/firestore';
+import { useScreenDetailsModal } from '../../hooks/useScreenDetailsModal';
 
 const { width } = Dimensions.get('window');
 const SCREEN_PADDING = 16;
@@ -29,8 +30,19 @@ const Wishlist = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedScreen, setSelectedScreen] = useState<ScreenDoc | null>(null);
-  const [modalVisible, setModalVisible] = useState(false);
+  
+  // Create a Set of wishlist screen IDs for the hook
+  const wishlistScreenIds = new Set(wishlistScreens.map(screen => screen.id));
+  
+  const {
+    selectedScreen,
+    modalVisible,
+    openModal,
+    closeModal,
+    handleBookNow,
+    handleToggleFavorite,
+    isFavorite
+  } = useScreenDetailsModal(wishlistScreenIds);
 
   // Load wishlist on component mount
   useEffect(() => {
@@ -67,24 +79,7 @@ const Wishlist = () => {
   };
 
   const handleScreenPress = (screen: ScreenDoc) => {
-    setSelectedScreen(screen);
-    setModalVisible(true);
-  };
-
-  const handleCloseModal = () => {
-    setModalVisible(false);
-    setSelectedScreen(null);
-  };
-
-  const handleBookNow = (screen: ScreenDoc) => {
-    setModalVisible(false);
-    router.push({
-      pathname: '/booking-screen',
-      params: {
-        screenId: screen.id,
-        screenTitle: screen.title,
-      }
-    });
+    openModal(screen);
   };
 
   const handleRemoveFromWishlist = async (screen: ScreenDoc) => {
@@ -92,8 +87,8 @@ const Wishlist = () => {
       // Optimistically remove from UI
       setWishlistScreens(prev => prev.filter(s => s.id !== screen.id));
       
-      // Remove from Firestore
-      await wishlistService.removeFromWishlist(screen.id as ScreenId);
+      // Use the centralized toggle handler
+      await handleToggleFavorite(screen);
       
     } catch (error) {
       console.error('Error removing from wishlist:', error);
@@ -200,10 +195,10 @@ const Wishlist = () => {
       <ScreenDetailsModal
         visible={modalVisible}
         screen={selectedScreen}
-        onClose={handleCloseModal}
+        onClose={closeModal}
         onBookNow={handleBookNow}
         onToggleFavorite={handleRemoveFromWishlist}
-        isFavorite={true} // All screens in wishlist are favorites
+        isFavorite={isFavorite}
       />
     </SafeAreaView>
   );

@@ -26,7 +26,7 @@ export default function BookingInformation() {
 
   const handleExit = () => {
     // Return to the previous screen (ScreenDetailsModal will be reopened by parent component)
-    router.back();
+    router.replace('/(users)/home');
   };
 
   const bookingSteps = [

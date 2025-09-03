@@ -12,13 +12,13 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
 import { COLORS } from '../../constants/Colors';
 import { ScreenService } from '../../services/screenService';
 import { wishlistService } from '../../services/wishlistService';
 import { ScreenCard } from '../../components/ScreenCard';
 import { ScreenDetailsModal } from '../../components/ScreenDetailsModal';
-import { ScreenDoc, ScreenId } from '../../shared/models/firestore';
+import { ScreenDoc } from '../../shared/models/firestore';
+import { useScreenDetailsModal } from '../../hooks/useScreenDetailsModal';
 
 const { width } = Dimensions.get('window');
 const SCREEN_PADDING = 16;
@@ -39,15 +39,22 @@ const CATEGORIES = [
 ];
 
 const Home = () => {
-  const router = useRouter();
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [screens, setScreens] = useState<ScreenDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [favoriteScreens, setFavoriteScreens] = useState<Set<string>>(new Set());
-  const [selectedScreen, setSelectedScreen] = useState<ScreenDoc | null>(null);
-  const [modalVisible, setModalVisible] = useState(false);
+  
+  const {
+    selectedScreen,
+    modalVisible,
+    openModal,
+    closeModal,
+    handleBookNow,
+    handleToggleFavorite,
+    isFavorite
+  } = useScreenDetailsModal(favoriteScreens);
   
   const scrollY = useRef(new Animated.Value(0)).current;
   const flatListRef = useRef(null);
@@ -84,24 +91,7 @@ const Home = () => {
   };
 
   const handleScreenPress = (screen: ScreenDoc) => {
-    setSelectedScreen(screen);
-    setModalVisible(true);
-  };
-
-  const handleCloseModal = () => {
-    setModalVisible(false);
-    setSelectedScreen(null);
-  };
-
-  const handleBookNow = (screen: ScreenDoc) => {
-    setModalVisible(false);
-    router.push({
-      pathname: '/booking-screen',
-      params: {
-        screenId: screen.id,
-        screenTitle: screen.title,
-      }
-    });
+    openModal(screen);
   };
 
   const handleFavoritePress = async (screen: ScreenDoc) => {
@@ -117,17 +107,11 @@ const Home = () => {
       }
       setFavoriteScreens(newFavorites);
 
-      // Update Firestore
-      const isNowInWishlist = await wishlistService.toggleWishlist(screen.id as ScreenId);
+      // Update Firestore using the hook's handler
+      await handleToggleFavorite(screen);
       
-      // Sync state with actual Firestore result in case of discrepancy
-      const actualFavorites = new Set(favoriteScreens);
-      if (isNowInWishlist) {
-        actualFavorites.add(screen.id);
-      } else {
-        actualFavorites.delete(screen.id);
-      }
-      setFavoriteScreens(actualFavorites);
+      // Refresh wishlist status to sync with actual state
+      loadWishlistStatus();
       
     } catch (error) {
       console.error('Error toggling wishlist:', error);
@@ -305,10 +289,10 @@ const Home = () => {
       <ScreenDetailsModal
         visible={modalVisible}
         screen={selectedScreen}
-        onClose={handleCloseModal}
+        onClose={closeModal}
         onBookNow={handleBookNow}
         onToggleFavorite={handleFavoritePress}
-        isFavorite={selectedScreen ? favoriteScreens.has(selectedScreen.id) : false}
+        isFavorite={isFavorite}
       />
     </SafeAreaView>
   );
