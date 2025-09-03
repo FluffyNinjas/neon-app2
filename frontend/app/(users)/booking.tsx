@@ -19,7 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../constants/Colors';
 import { BookingService } from '../../services/bookingService';
 import { ScreenService } from '../../services/screenService';
-import { contentService } from '../../services/contentService';
+import { ContentService } from '../../services/contentService';
 import { BookingDoc, ScreenDoc, BookingStatus } from '../../shared/models/firestore';
 
 interface BookingWithScreen {
@@ -124,12 +124,19 @@ const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     
     try {
       setLoadingContent(true);
-      const userContent = await contentService.getUserContent(booking.booking.renterId);
+      console.log('Loading content for:', booking.booking.contentId, 'from user:', booking.booking.renterId);
+      
+      const userContent = await ContentService.getUserContent(booking.booking.renterId);
+      console.log('User content:', userContent);
+      
       const content = userContent.find(c => c.id === booking.booking.contentId);
+      console.log('Found content:', content);
       
       if (content?.fileUrl) {
         setContentUri(content.fileUrl);
+        console.log('Set content URI:', content.fileUrl);
       } else {
+        console.log('No content found or no fileUrl');
         setContentUri(null);
       }
     } catch (error) {
@@ -371,7 +378,13 @@ const Booking = () => {
       );
       
       setBookings(bookingsWithScreens);
-      applyFilter('all', bookingsWithScreens);
+      // Only apply 'all' filter on initial load or refresh, not when user has selected a filter
+      if (selectedFilter === 'all' || loading || refreshing) {
+        applyFilter('all', bookingsWithScreens);
+      } else {
+        // Reapply the current filter with new data
+        applyFilter(selectedFilter, bookingsWithScreens);
+      }
     } catch (err) {
       console.error('Error loading bookings:', err);
       setError('Failed to load your bookings. Please try again.');
@@ -379,7 +392,7 @@ const Booking = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [applyFilter]);
+  }, [applyFilter, selectedFilter, loading, refreshing]);
 
   const getFilterCounts = (bookingsList: BookingWithScreen[]) => {
     const counts = STATUS_FILTERS.map(filter => {
