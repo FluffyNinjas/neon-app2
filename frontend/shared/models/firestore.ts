@@ -140,6 +140,7 @@ import {
     title: string;
     type: ContentType;
     fileUrl: string; // Storage URL
+    storagePath?: string; // Firebase Storage path for deletion
     durationSec?: number; // optional for images
     dimensions?: { width: number; height: number };
     fileSize?: number; // bytes
