@@ -20,7 +20,7 @@ export default function BookingConfirmation() {
   
   // If no screen data available, redirect to information page
   if (!screen) {
-    router.replace('/booking-screen');
+    router.replace('/booking-screen' as any);
     return null;
   }
 
@@ -37,7 +37,8 @@ export default function BookingConfirmation() {
           text: 'Exit',
           style: 'destructive',
           onPress: () => {
-            clearBooking();
+            
+            // Navigate back to the home screen
             router.replace('/(users)/home');
           },
         },

@@ -182,7 +182,8 @@ export default function BookingDates() {
           text: 'Exit',
           style: 'destructive',
           onPress: () => {
-            clearBooking();
+            
+            // Navigate back to the home screen
             router.replace('/(users)/home');
           },
         },
