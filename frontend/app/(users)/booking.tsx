@@ -603,6 +603,12 @@ const Booking = () => {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.background} />
       
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>My Bookings</Text>
+        <Text style={styles.headerSubtitle}>Track your advertisement campaigns</Text>
+      </View>
+      
       {/* Status Filter Tabs */}
       {bookings.length > 0 && (
         <View style={styles.filtersContainer}>
@@ -677,6 +683,22 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  header: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.primary,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: 4,
+  },
+  headerSubtitle: {
+    fontSize: 16,
+    color: COLORS.muted,
   },
   loadingContainer: {
     flex: 1,

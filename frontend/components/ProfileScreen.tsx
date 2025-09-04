@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { COLORS } from '../constants/Colors';
 import { userService, UserHelpers, UserDoc } from '../services/userService';
+import ModeSwitchLoader from './ModeSwitchLoader';
 
 interface ProfileScreenProps {
   userType: 'user' | 'owner';
@@ -23,6 +24,9 @@ export default function ProfileScreen({ userType: initialUserType }: ProfileScre
   const [userData, setUserData] = useState<UserDoc | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isSwitchingMode, setIsSwitchingMode] = useState(false);
+  const [switchingFromMode, setSwitchingFromMode] = useState<'user' | 'owner'>('user');
+  const [switchingToMode, setSwitchingToMode] = useState<'user' | 'owner'>('owner');
   
   const isOwner = currentUserType === 'owner';
 
@@ -90,26 +94,46 @@ export default function ProfileScreen({ userType: initialUserType }: ProfileScre
           style: 'default',
           onPress: async () => {
             try {
-              setCurrentUserType(newMode);
+              // Set up loading screen
+              setSwitchingFromMode(currentUserType);
+              setSwitchingToMode(newMode);
+              setIsSwitchingMode(true);
+              
               // Update user type in database if user doesn't have 'both' capability
               if (userData.userType !== 'both') {
                 const newUserType = newMode === 'owner' ? 'owner' : 'creator';
                 await userService.updateUserType(userData.id, newUserType);
               }
-              // Navigate to the appropriate tab layout
-              if (newMode === 'owner') {
-                router.replace('/(owners)/dashboard');
-              } else {
-                router.replace('/(users)/home');
-              }
+              
+              // Wait for loading screen to complete, then navigate
             } catch (error) {
               console.error('Error switching mode:', error);
+              setIsSwitchingMode(false);
               Alert.alert('Error', 'Failed to switch mode. Please try again.');
             }
           },
         },
       ]
     );
+  };
+
+  const handleLoadingComplete = () => {
+    const newMode = switchingToMode;
+    
+    // Update the current user type
+    setCurrentUserType(newMode);
+    
+    // Hide loading screen
+    setIsSwitchingMode(false);
+    
+    // Navigate to the appropriate tab layout
+    setTimeout(() => {
+      if (newMode === 'owner') {
+        router.replace('/(owners)/dashboard');
+      } else {
+        router.replace('/(users)/home');
+      }
+    }, 100); // Small delay to ensure smooth transition
   };
 
   const profileSections = [
@@ -197,6 +221,14 @@ export default function ProfileScreen({ userType: initialUserType }: ProfileScre
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Page Header */}
+      <View style={styles.pageHeader}>
+        <Text style={styles.pageTitle}>Profile</Text>
+        <Text style={styles.pageSubtitle}>
+          {isOwner ? 'Manage your screen business' : 'Manage your account'}
+        </Text>
+      </View>
+      
       <ScrollView style={styles.scrollView}>
         {/* Profile Header */}
         <View style={styles.header}>
@@ -263,6 +295,22 @@ export default function ProfileScreen({ userType: initialUserType }: ProfileScre
           color={COLORS.background} 
         />
       </TouchableOpacity>
+
+      {/* Mode Switch Loading Screen */}
+      <ModeSwitchLoader
+        visible={isSwitchingMode}
+        fromMode={switchingFromMode}
+        toMode={switchingToMode}
+        onComplete={handleLoadingComplete}
+        duration={2500}
+        customAnimation="scale"
+        customColors={{
+          background: COLORS.surface,
+          overlay: 'rgba(0, 0, 0, 0.85)',
+          text: COLORS.text,
+          accent: COLORS.accent,
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -271,6 +319,22 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  pageHeader: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.primary,
+  },
+  pageTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: 4,
+  },
+  pageSubtitle: {
+    fontSize: 16,
+    color: COLORS.muted,
   },
   scrollView: {
     flex: 1,
