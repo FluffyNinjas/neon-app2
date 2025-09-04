@@ -20,7 +20,7 @@ import { COLORS } from '../../constants/Colors';
 import { BookingService } from '../../services/bookingService';
 import { ScreenService } from '../../services/screenService';
 import { ContentService } from '../../services/contentService';
-import { BookingDoc, ScreenDoc, BookingStatus } from '../../shared/models/firestore';
+import { BookingDoc, ScreenDoc, BookingId } from '../../shared/models/firestore';
 
 interface BookingWithScreen {
   booking: BookingDoc;
@@ -156,6 +156,7 @@ const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
         onClose();
       } catch (err) {
         // Error handling is done in the parent component
+        console.error('Error handling booking action:', err);
       }
       return;
     }
@@ -519,13 +520,13 @@ const OwnerBookings = () => {
   const performBookingAction = async (action: 'accept' | 'decline' | 'cancel', bookingId: string) => {
     try {
       if (action === 'accept') {
-        await BookingService.acceptBooking(bookingId);
+        await BookingService.acceptBooking(bookingId as BookingId);
         Alert.alert('Booking Accepted', 'The booking has been accepted and the customer will be notified.');
       } else if (action === 'decline') {
-        await BookingService.declineBooking(bookingId);
+        await BookingService.declineBooking(bookingId as BookingId);
         Alert.alert('Booking Declined', 'The booking has been declined and the customer will be notified.');
       } else if (action === 'cancel') {
-        await BookingService.ownerCancelBooking(bookingId);
+        await BookingService.ownerCancelBooking(bookingId as BookingId);
         Alert.alert('Booking Cancelled', 'The booking has been cancelled and the customer will be notified.');
       }
       
@@ -534,15 +535,17 @@ const OwnerBookings = () => {
     } catch (err) {
       console.error(`Error ${action}ing booking:`, err);
       
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      
       // Handle specific error for cancelled bookings
-      if (err.message === 'This booking has been cancelled by the customer') {
+      if (errorMessage === 'This booking has been cancelled by the customer') {
         Alert.alert('Booking Already Cancelled', 'This booking has been cancelled by the customer. The list will be refreshed.');
         loadBookings();
-      } else if (err.message.includes('Cannot accept this booking because the following dates are already reserved:')) {
+      } else if (errorMessage.includes('Cannot accept this booking because the following dates are already reserved:')) {
         // Handle date conflict error
         Alert.alert(
           'Date Conflict', 
-          `${err.message}\n\nThese dates may have been booked by another customer after this request was made. Please refresh the list to see the most current bookings.`,
+          `${errorMessage}\n\nThese dates may have been booked by another customer after this request was made. Please refresh the list to see the most current bookings.`,
           [
             {
               text: 'Refresh List',
