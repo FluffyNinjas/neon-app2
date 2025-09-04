@@ -348,16 +348,19 @@ const Booking = () => {
   const [modalVisible, setModalVisible] = useState(false);
 
   const applyFilter = useCallback((filterId: string, bookingsList?: BookingWithScreen[]) => {
-    const listToFilter = bookingsList || bookings;
-    let filtered = listToFilter;
+    setSelectedFilter(filterId);
+  }, []);
+
+  // Separate effect to handle actual filtering
+  useEffect(() => {
+    let filtered = bookings;
     
-    if (filterId !== 'all') {
-      filtered = listToFilter.filter(item => item.booking.status === filterId);
+    if (selectedFilter !== 'all') {
+      filtered = bookings.filter(item => item.booking.status === selectedFilter);
     }
     
     setFilteredBookings(filtered);
-    setSelectedFilter(filterId);
-  }, [bookings]);
+  }, [bookings, selectedFilter]);
 
   const loadBookings = useCallback(async () => {
     try {
@@ -378,13 +381,6 @@ const Booking = () => {
       );
       
       setBookings(bookingsWithScreens);
-      // Only apply 'all' filter on initial load or refresh, not when user has selected a filter
-      if (selectedFilter === 'all' || loading || refreshing) {
-        applyFilter('all', bookingsWithScreens);
-      } else {
-        // Reapply the current filter with new data
-        applyFilter(selectedFilter, bookingsWithScreens);
-      }
     } catch (err) {
       console.error('Error loading bookings:', err);
       setError('Failed to load your bookings. Please try again.');
@@ -392,7 +388,7 @@ const Booking = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [applyFilter, selectedFilter, loading, refreshing]);
+  }, []);
 
   const getFilterCounts = (bookingsList: BookingWithScreen[]) => {
     const counts = STATUS_FILTERS.map(filter => {
@@ -621,7 +617,7 @@ const Booking = () => {
                   styles.filterButton,
                   selectedFilter === item.id && styles.filterButtonActive
                 ]}
-                onPress={() => applyFilter(item.id)}
+                onPress={() => setSelectedFilter(item.id)}
               >
                 <Text style={[
                   styles.filterText,
