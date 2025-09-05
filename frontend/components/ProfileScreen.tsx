@@ -136,6 +136,61 @@ export default function ProfileScreen({ userType: initialUserType }: ProfileScre
     }, 100); // Small delay to ensure smooth transition
   };
 
+  const handleMenuItemPress = (label: string) => {
+    switch (label) {
+      case 'Payout Settings':
+        router.push('/profile-screens/payout-settings');
+        break;
+      case 'Personal Information':
+        // TODO: Navigate to personal information screen
+        Alert.alert('Coming Soon', 'Personal Information screen will be implemented.');
+        break;
+      case 'Security & Privacy':
+        // TODO: Navigate to security & privacy screen
+        Alert.alert('Coming Soon', 'Security & Privacy screen will be implemented.');
+        break;
+      case 'Notifications':
+        // TODO: Navigate to notifications screen
+        Alert.alert('Coming Soon', 'Notifications screen will be implemented.');
+        break;
+      case 'Screen Management':
+        // TODO: Navigate to screen management screen
+        Alert.alert('Coming Soon', 'Screen Management screen will be implemented.');
+        break;
+      case 'Revenue Analytics':
+        // TODO: Navigate to revenue analytics screen
+        Alert.alert('Coming Soon', 'Revenue Analytics screen will be implemented.');
+        break;
+      case 'Booking History':
+        // TODO: Navigate to booking history screen
+        Alert.alert('Coming Soon', 'Booking History screen will be implemented.');
+        break;
+      case 'Saved Screens':
+        // TODO: Navigate to saved screens screen
+        Alert.alert('Coming Soon', 'Saved Screens screen will be implemented.');
+        break;
+      case 'Payment Methods':
+        // TODO: Navigate to payment methods screen
+        Alert.alert('Coming Soon', 'Payment Methods screen will be implemented.');
+        break;
+      case 'Help Center':
+        // TODO: Navigate to help center screen
+        Alert.alert('Coming Soon', 'Help Center screen will be implemented.');
+        break;
+      case 'Contact Support':
+        // TODO: Navigate to contact support screen
+        Alert.alert('Coming Soon', 'Contact Support screen will be implemented.');
+        break;
+      case 'Terms & Privacy':
+        // TODO: Navigate to terms & privacy screen
+        Alert.alert('Coming Soon', 'Terms & Privacy screen will be implemented.');
+        break;
+      default:
+        Alert.alert('Coming Soon', `${label} screen will be implemented.`);
+        break;
+    }
+  };
+
   const profileSections = [
     {
       title: 'Account',
@@ -269,7 +324,11 @@ export default function ProfileScreen({ userType: initialUserType }: ProfileScre
           <View key={sectionIndex} style={styles.section}>
             <Text style={styles.sectionTitle}>{section.title}</Text>
             {section.items.map((item, itemIndex) => (
-              <TouchableOpacity key={itemIndex} style={styles.menuItem}>
+              <TouchableOpacity 
+                key={itemIndex} 
+                style={styles.menuItem}
+                onPress={() => handleMenuItemPress(item.label)}
+              >
                 <View style={styles.menuItemLeft}>
                   <Ionicons name={item.icon} size={22} color={COLORS.secondary} />
                   <Text style={styles.menuItemText}>{item.label}</Text>
