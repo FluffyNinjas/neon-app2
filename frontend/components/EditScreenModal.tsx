@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/Colors';
 import { ScreenDoc } from '../shared/models/firestore';
 import { ScreenService } from '../services/screenService';
+import { screenTypes, getScreenTypeById } from '../constants/ScreenTypes';
 
 interface EditScreenModalProps {
   visible: boolean;
@@ -35,6 +36,7 @@ export const EditScreenModal: React.FC<EditScreenModalProps> = ({
   const [hasChanges, setHasChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [showScreenTypeDropdown, setShowScreenTypeDropdown] = useState(false);
 
   useEffect(() => {
     if (screen) {
@@ -194,6 +196,111 @@ export const EditScreenModal: React.FC<EditScreenModalProps> = ({
     </View>
   );
 
+  const renderScreenTypeDropdown = () => {
+    const selectedType = getScreenTypeById(formData.screenType || '');
+    
+    return (
+      <View style={styles.inputGroup}>
+        <Text style={styles.inputLabel}>Screen Type</Text>
+        <TouchableOpacity
+          style={[
+            styles.dropdownButton,
+            errors.screenType && styles.inputError,
+          ]}
+          onPress={() => setShowScreenTypeDropdown(true)}
+        >
+          <View style={styles.dropdownContent}>
+            {selectedType ? (
+              <>
+                <Ionicons 
+                  name={selectedType.icon as any} 
+                  size={20} 
+                  color={COLORS.accent} 
+                  style={styles.dropdownIcon}
+                />
+                <View style={styles.dropdownTextContainer}>
+                  <Text style={styles.dropdownTitle}>{selectedType.title}</Text>
+                  <Text style={styles.dropdownDescription}>{selectedType.description}</Text>
+                </View>
+              </>
+            ) : (
+              <Text style={styles.dropdownPlaceholder}>Select screen type</Text>
+            )}
+            <Ionicons 
+              name="chevron-down" 
+              size={20} 
+              color={COLORS.muted} 
+            />
+          </View>
+        </TouchableOpacity>
+        {errors.screenType && (
+          <Text style={styles.errorText}>{errors.screenType}</Text>
+        )}
+        
+        {/* Screen Type Modal */}
+        <Modal
+          visible={showScreenTypeDropdown}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => setShowScreenTypeDropdown(false)}
+        >
+          <View style={styles.dropdownModal}>
+            <View style={styles.dropdownHeader}>
+              <Text style={styles.dropdownModalTitle}>Select Screen Type</Text>
+              <TouchableOpacity 
+                onPress={() => setShowScreenTypeDropdown(false)}
+                style={styles.dropdownCloseButton}
+              >
+                <Ionicons name="close" size={24} color={COLORS.text} />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView style={styles.dropdownList}>
+              {screenTypes.map((type) => (
+                <TouchableOpacity
+                  key={type.id}
+                  style={[
+                    styles.dropdownOption,
+                    formData.screenType === type.id && styles.dropdownOptionSelected
+                  ]}
+                  onPress={() => {
+                    updateField('screenType', type.id);
+                    setShowScreenTypeDropdown(false);
+                  }}
+                >
+                  <Ionicons 
+                    name={type.icon as any} 
+                    size={24} 
+                    color={formData.screenType === type.id ? COLORS.accent : COLORS.text} 
+                    style={styles.dropdownOptionIcon}
+                  />
+                  <View style={styles.dropdownOptionText}>
+                    <Text style={[
+                      styles.dropdownOptionTitle,
+                      formData.screenType === type.id && styles.dropdownOptionTitleSelected
+                    ]}>
+                      {type.title}
+                    </Text>
+                    <Text style={styles.dropdownOptionDescription}>
+                      {type.description}
+                    </Text>
+                  </View>
+                  {formData.screenType === type.id && (
+                    <Ionicons 
+                      name="checkmark-circle" 
+                      size={20} 
+                      color={COLORS.accent} 
+                    />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </Modal>
+      </View>
+    );
+  };
+
   const renderSwitchField = (
     label: string,
     field: keyof ScreenDoc,
@@ -274,7 +381,7 @@ export const EditScreenModal: React.FC<EditScreenModalProps> = ({
             
             {renderInputField('Title', 'title', 'Enter screen title')}
             {renderInputField('Description', 'description', 'Enter description (optional)', true)}
-            {renderInputField('Screen Type', 'screenType', 'e.g., LED, Digital, Interactive')}
+            {renderScreenTypeDropdown()}
             {renderInputField('Screen Resolution', 'screenResolution', 'e.g., 1920x1080 (optional)')}
             {renderInputField('Screen Size', 'screenSize', 'e.g., 50", 6x4 feet')}
           </View>
@@ -462,5 +569,94 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.muted,
     marginTop: 2,
+  },
+  dropdownButton: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  dropdownContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  dropdownIcon: {
+    marginRight: 12,
+  },
+  dropdownTextContainer: {
+    flex: 1,
+  },
+  dropdownTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  dropdownDescription: {
+    fontSize: 12,
+    color: COLORS.muted,
+    marginTop: 2,
+  },
+  dropdownPlaceholder: {
+    fontSize: 16,
+    color: COLORS.muted,
+    flex: 1,
+  },
+  dropdownModal: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  dropdownHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'ios' ? 50 : 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.surface,
+  },
+  dropdownModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  dropdownCloseButton: {
+    padding: 4,
+  },
+  dropdownList: {
+    flex: 1,
+  },
+  dropdownOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.surface,
+  },
+  dropdownOptionSelected: {
+    backgroundColor: `${COLORS.accent}10`,
+  },
+  dropdownOptionIcon: {
+    marginRight: 16,
+  },
+  dropdownOptionText: {
+    flex: 1,
+  },
+  dropdownOptionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: 2,
+  },
+  dropdownOptionTitleSelected: {
+    color: COLORS.accent,
+  },
+  dropdownOptionDescription: {
+    fontSize: 14,
+    color: COLORS.muted,
   },
 });
