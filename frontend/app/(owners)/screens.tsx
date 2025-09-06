@@ -89,7 +89,7 @@ const Screens = () => {
   }, [screens, searchQuery, filterStatus, applyFilters]);
 
   const handleCreateScreen = () => {
-    router.push('/add-screen/' as any);
+    router.push('/book-screen/' as any);
   };
 
   const handleScreenPress = (screen: ScreenDoc) => {

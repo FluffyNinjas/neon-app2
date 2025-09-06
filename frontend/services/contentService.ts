@@ -92,7 +92,7 @@ export class ContentService {
         updatedAt: serverTimestamp(),
       };
 
-      const docRef = await addDoc(this.getContentCollection(user.uid as UserId), contentDoc);
+      const docRef = await addDoc(this.getContentCollection(user.uid as UserId), contentDoc as any);
       return docRef.id as ContentId;
     } catch (error) {
       console.error('Error uploading content:', error);
