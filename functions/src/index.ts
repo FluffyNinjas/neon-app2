@@ -14,9 +14,7 @@ const stripeWebhookSecret = defineString("STRIPE_WEBHOOK_SECRET");
 let stripe: Stripe;
 const getStripe = () => {
     if (!stripe) {
-        stripe = new Stripe(stripeSecretKey.value(), {
-            apiVersion: "2025-08-27.basil",
-        });
+        stripe = new Stripe(stripeSecretKey.value());
     }
     return stripe;
 };
@@ -42,6 +40,18 @@ interface CreatePaymentIntentData {
     currency: string;
     connectedAccountId: string;
     applicationFeeAmount?: number;
+    bookingId: string;
+}
+
+
+interface RefundPaymentData {
+    paymentIntentId: string;
+    bookingId: string;
+    reason?: string;
+}
+
+interface AcceptBookingData {
+    bookingId: string;
 }
 
 // Create Connect Account
@@ -164,20 +174,34 @@ export const createPaymentIntent = onCall<CreatePaymentIntentData>(
             );
         }
 
-        const {amount, currency, connectedAccountId, applicationFeeAmount} = request.data;
+        const {amount, currency, connectedAccountId, applicationFeeAmount, bookingId} = request.data;
 
         try {
             const paymentIntent = await getStripe().paymentIntents.create({
                 amount,
                 currency,
-                application_fee_amount: applicationFeeAmount, // Your platform fee
+                application_fee_amount: applicationFeeAmount || Math.floor(amount * 0.05), // 5% platform fee
                 transfer_data: {
                     destination: connectedAccountId,
                 },
+                capture_method: "manual", // Hold payment until booking is accepted
+                metadata: {
+                    bookingId: bookingId,
+                    type: "screen_booking",
+                },
+            });
+
+            // Update booking with payment intent
+            const db = admin.firestore();
+            await db.collection("bookings").doc(bookingId).update({
+                paymentIntentId: paymentIntent.id,
+                paymentStatus: "payment_intent_created",
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             });
 
             return {
                 clientSecret: paymentIntent.client_secret,
+                paymentIntentId: paymentIntent.id,
                 success: true,
             };
         } catch (error) {
@@ -185,6 +209,249 @@ export const createPaymentIntent = onCall<CreatePaymentIntentData>(
             throw new HttpsError(
                 "internal",
                 "Failed to create payment intent"
+            );
+        }
+    }
+);
+
+// Accept Booking and Capture Payment
+export const acceptBooking = onCall<AcceptBookingData>(
+    async (request) => {
+        if (!request.auth) {
+            throw new HttpsError(
+                "unauthenticated",
+                "User must be authenticated"
+            );
+        }
+
+        const {bookingId} = request.data;
+        const db = admin.firestore();
+
+        try {
+            // Get booking details
+            const bookingRef = db.collection("bookings").doc(bookingId);
+            const bookingDoc = await bookingRef.get();
+
+            if (!bookingDoc.exists) {
+                throw new HttpsError("not-found", "Booking not found");
+            }
+
+            const booking = bookingDoc.data();
+
+            // Verify user is the screen owner
+            const screenDoc = await db.collection("screens").doc(booking?.screenId).get();
+            if (!screenDoc.exists || screenDoc.data()?.ownerId !== request.auth.uid) {
+                throw new HttpsError("permission-denied", "Not authorized to accept this booking");
+            }
+
+            // Verify booking is in requested status
+            if (booking?.status !== "requested") {
+                throw new HttpsError("failed-precondition", "Booking is not in requested status");
+            }
+
+            // Capture the payment
+            if (booking?.paymentIntentId) {
+                const paymentIntent = await getStripe().paymentIntents.capture(booking.paymentIntentId);
+
+                // Update booking status
+                await bookingRef.update({
+                    status: "accepted",
+                    paymentStatus: "captured",
+                    acceptedAt: admin.firestore.FieldValue.serverTimestamp(),
+                    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                });
+
+                return {
+                    success: true,
+                    paymentIntentId: paymentIntent.id,
+                    status: "accepted",
+                };
+            } else {
+                throw new HttpsError("failed-precondition", "No payment intent found for booking");
+            }
+        } catch (error) {
+            console.error("Error accepting booking:", error);
+            throw new HttpsError(
+                "internal",
+                "Failed to accept booking"
+            );
+        }
+    }
+);
+
+// Decline Booking and Refund Payment
+export const declineBooking = onCall<AcceptBookingData>(
+    async (request) => {
+        if (!request.auth) {
+            throw new HttpsError(
+                "unauthenticated",
+                "User must be authenticated"
+            );
+        }
+
+        const {bookingId} = request.data;
+        const db = admin.firestore();
+
+        try {
+            // Get booking details
+            const bookingRef = db.collection("bookings").doc(bookingId);
+            const bookingDoc = await bookingRef.get();
+
+            if (!bookingDoc.exists) {
+                throw new HttpsError("not-found", "Booking not found");
+            }
+
+            const booking = bookingDoc.data();
+
+            // Verify user is the screen owner
+            const screenDoc = await db.collection("screens").doc(booking?.screenId).get();
+            if (!screenDoc.exists || screenDoc.data()?.ownerId !== request.auth.uid) {
+                throw new HttpsError("permission-denied", "Not authorized to decline this booking");
+            }
+
+            // Cancel the payment intent (releases the hold)
+            if (booking?.paymentIntentId) {
+                await getStripe().paymentIntents.cancel(booking.paymentIntentId);
+
+                // Update booking status
+                await bookingRef.update({
+                    status: "declined",
+                    paymentStatus: "cancelled",
+                    declinedAt: admin.firestore.FieldValue.serverTimestamp(),
+                    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                });
+
+                return {
+                    success: true,
+                    paymentIntentId: booking.paymentIntentId,
+                    status: "declined",
+                };
+            } else {
+                // No payment to cancel, just update status
+                await bookingRef.update({
+                    status: "declined",
+                    declinedAt: admin.firestore.FieldValue.serverTimestamp(),
+                    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                });
+
+                return {
+                    success: true,
+                    status: "declined",
+                };
+            }
+        } catch (error) {
+            console.error("Error declining booking:", error);
+            throw new HttpsError(
+                "internal",
+                "Failed to decline booking"
+            );
+        }
+    }
+);
+
+// Cancel Booking and Process Refund
+export const cancelBooking = onCall<RefundPaymentData>(
+    async (request) => {
+        if (!request.auth) {
+            throw new HttpsError(
+                "unauthenticated",
+                "User must be authenticated"
+            );
+        }
+
+        const {bookingId, reason} = request.data;
+        const db = admin.firestore();
+
+        try {
+            // Get booking details
+            const bookingRef = db.collection("bookings").doc(bookingId);
+            const bookingDoc = await bookingRef.get();
+
+            if (!bookingDoc.exists) {
+                throw new HttpsError("not-found", "Booking not found");
+            }
+
+            const booking = bookingDoc.data();
+
+            // Verify user is authorized (owner or renter)
+            const screenDoc = await db.collection("screens").doc(booking?.screenId).get();
+            const isOwner = screenDoc.data()?.ownerId === request.auth.uid;
+            const isRenter = booking?.userId === request.auth.uid;
+
+            if (!isOwner && !isRenter) {
+                throw new HttpsError("permission-denied", "Not authorized to cancel this booking");
+            }
+
+            // Check if booking can be cancelled (not live or completed)
+            if (booking?.status === "live" || booking?.status === "completed") {
+                throw new HttpsError("failed-precondition", "Cannot cancel live or completed booking");
+            }
+
+            // Process refund if payment was captured
+            if (booking?.paymentIntentId && booking?.paymentStatus === "captured") {
+                const refund = await getStripe().refunds.create({
+                    payment_intent: booking.paymentIntentId,
+                    reason: "requested_by_customer",
+                    metadata: {
+                        bookingId: bookingId,
+                        cancelledBy: request.auth.uid,
+                        reason: reason || "cancelled",
+                    },
+                });
+
+                // Update booking status
+                await bookingRef.update({
+                    status: "cancelled",
+                    paymentStatus: "refunded",
+                    refundId: refund.id,
+                    cancelledAt: admin.firestore.FieldValue.serverTimestamp(),
+                    cancelledBy: request.auth.uid,
+                    cancellationReason: reason,
+                    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                });
+
+                return {
+                    success: true,
+                    refundId: refund.id,
+                    status: "cancelled",
+                };
+            } else if (booking?.paymentIntentId && booking?.paymentStatus !== "captured") {
+                // Cancel uncaptured payment intent
+                await getStripe().paymentIntents.cancel(booking.paymentIntentId);
+
+                await bookingRef.update({
+                    status: "cancelled",
+                    paymentStatus: "cancelled",
+                    cancelledAt: admin.firestore.FieldValue.serverTimestamp(),
+                    cancelledBy: request.auth.uid,
+                    cancellationReason: reason,
+                    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                });
+
+                return {
+                    success: true,
+                    status: "cancelled",
+                };
+            } else {
+                // No payment to process, just update status
+                await bookingRef.update({
+                    status: "cancelled",
+                    cancelledAt: admin.firestore.FieldValue.serverTimestamp(),
+                    cancelledBy: request.auth.uid,
+                    cancellationReason: reason,
+                    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                });
+
+                return {
+                    success: true,
+                    status: "cancelled",
+                };
+            }
+        } catch (error) {
+            console.error("Error cancelling booking:", error);
+            throw new HttpsError(
+                "internal",
+                "Failed to cancel booking"
             );
         }
     }

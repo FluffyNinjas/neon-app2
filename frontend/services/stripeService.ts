@@ -1,8 +1,8 @@
 import { getFunctions, httpsCallable } from "firebase/functions";
-import { getApp } from "firebase/app";
+import { app } from "@/FirebaseConfig";
 
 // Initialize Firebase Functions
-const functions = getFunctions(getApp());
+const functions = getFunctions(app, 'us-central1');
 
 // Create Connect Account
 export const createConnectAccount = async (email: string, country?: string) => {

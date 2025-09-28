@@ -13,17 +13,23 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useStripe } from '@stripe/stripe-react-native';
+import { httpsCallable } from 'firebase/functions';
 import { COLORS } from '../../constants/Colors';
 import { useBookingStore } from '../../stores/bookingStore';
 import { ContentService } from '../../services/contentService';
 import { BookingService } from '../../services/bookingService';
 import { ContentDoc } from '../../shared/models/firestore';
+import { functions, db } from '../../FirebaseConfig';
+import { doc, getDoc } from 'firebase/firestore';
 
 export default function BookingConfirmation() {
   const router = useRouter();
+  const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const [selectedContent, setSelectedContent] = useState<ContentDoc | null>(null);
   const [loading, setLoading] = useState(true);
   const [bookingInProgress, setBookingInProgress] = useState(false);
+  const [paymentInProgress, setPaymentInProgress] = useState(false);
   
   const { 
     screen, 
@@ -115,24 +121,27 @@ export default function BookingConfirmation() {
 
     Alert.alert(
       'Confirm Booking',
-      'This will create a booking request. You will be charged once the owner accepts your request.',
+      'You will be charged immediately. Payment will be held until the owner accepts your request.',
       [
         {
           text: 'Cancel',
           style: 'cancel',
         },
         {
-          text: 'Confirm',
-          onPress: () => processBooking(),
+          text: 'Pay Now',
+          onPress: () => processBookingWithPayment(),
         },
       ]
     );
   };
 
-  const processBooking = async () => {
+  const processBookingWithPayment = async () => {
     setBookingInProgress(true);
+    setPaymentInProgress(true);
+
     try {
-      await BookingService.createBooking({
+      // Step 1: Create the booking first
+      const booking = await BookingService.createBooking({
         screenId: screen.id,
         ownerId: screen.ownerId,
         dates: selectedDates,
@@ -141,9 +150,72 @@ export default function BookingConfirmation() {
         specialInstructions: specialInstructions || undefined,
       });
 
+      // Step 2: Check if screen owner has Stripe account
+      const getAccountStatus = httpsCallable(functions, 'getAccountStatus');
+      
+      // Get screen owner's Stripe account ID
+      const screenOwnerDoc = await getDoc(doc(db, 'users', screen.ownerId));
+      
+      if (!screenOwnerDoc.exists() || !screenOwnerDoc.data()?.stripeAccountId) {
+        throw new Error('Screen owner has not set up payments yet. Please try a different screen.');
+      }
+
+      const connectedAccountId = screenOwnerDoc.data()?.stripeAccountId;
+
+      // Verify account is active
+      const accountStatusResult = await getAccountStatus({ accountId: connectedAccountId });
+      const accountStatus = accountStatusResult.data as any;
+      
+      if (!accountStatus.chargesEnabled) {
+        throw new Error('Screen owner\'s payment account is not fully activated. Please try a different screen.');
+      }
+
+      // Step 3: Create payment intent
+      const createPaymentIntent = httpsCallable(functions, 'createPaymentIntent');
+      const paymentResult = await createPaymentIntent({
+        amount: totalAmount,
+        currency: 'usd',
+        connectedAccountId: connectedAccountId,
+        bookingId: booking.id,
+      });
+
+      const paymentData = paymentResult.data as any;
+      
+      if (!paymentData.success || !paymentData.clientSecret) {
+        throw new Error('Failed to create payment. Please try again.');
+      }
+
+      // Step 4: Initialize payment sheet
+      const { error: initError } = await initPaymentSheet({
+        paymentIntentClientSecret: paymentData.clientSecret,
+        merchantDisplayName: 'NEON Screen Rentals',
+        allowsDelayedPaymentMethods: false,
+        returnURL: 'finalneon://payment-complete',
+      });
+
+      if (initError) {
+        console.error('Payment sheet init error:', initError);
+        throw new Error('Failed to initialize payment. Please try again.');
+      }
+
+      setPaymentInProgress(false);
+      setBookingInProgress(false);
+
+      // Step 5: Present payment sheet
+      const { error: paymentError } = await presentPaymentSheet();
+
+      if (paymentError) {
+        if (paymentError.code !== 'Canceled') {
+          console.error('Payment error:', paymentError);
+          Alert.alert('Payment Failed', paymentError.message || 'Payment failed. Please try again.');
+        }
+        return;
+      }
+
+      // Payment successful
       Alert.alert(
-        'Booking Request Sent!',
-        'Your booking request has been submitted. You will receive a notification once the owner responds.',
+        'Payment Successful!',
+        'Your booking request has been submitted with payment secured. You will receive a notification once the owner responds.',
         [
           {
             text: 'OK',
@@ -155,10 +227,11 @@ export default function BookingConfirmation() {
         ],
         { cancelable: false }
       );
-    } catch (err) {
-      console.error('Error creating booking:', err);
-      Alert.alert('Error', 'Failed to create booking. Please try again.');
-    } finally {
+
+    } catch (err: any) {
+      console.error('Error processing booking with payment:', err);
+      Alert.alert('Error', err.message || 'Failed to process booking. Please try again.');
+      setPaymentInProgress(false);
       setBookingInProgress(false);
     }
   };
@@ -292,11 +365,25 @@ export default function BookingConfirmation() {
           <View style={styles.paymentCard}>
             <View style={styles.paymentRow}>
               <Ionicons name="card-outline" size={20} color={COLORS.muted} />
-              <Text style={styles.paymentText}>Payment will be processed via Stripe</Text>
+              <Text style={styles.paymentText}>Secure Payment via Stripe</Text>
             </View>
             <Text style={styles.paymentNote}>
-              You will be charged ${(totalAmount / 100).toFixed(0)} once the screen owner accepts your booking request.
+              You will be charged ${(totalAmount / 100).toFixed(0)} immediately. Your payment will be held securely until the owner accepts your request.
             </Text>
+            <View style={styles.paymentFeatures}>
+              <View style={styles.featureRow}>
+                <Ionicons name="shield-checkmark" size={16} color="#4CAF50" />
+                <Text style={styles.featureText}>Secure payment processing</Text>
+              </View>
+              <View style={styles.featureRow}>
+                <Ionicons name="refresh" size={16} color="#4CAF50" />
+                <Text style={styles.featureText}>Full refund if declined</Text>
+              </View>
+              <View style={styles.featureRow}>
+                <Ionicons name="lock-closed" size={16} color="#4CAF50" />
+                <Text style={styles.featureText}>Payment held until acceptance</Text>
+              </View>
+            </View>
           </View>
         </View>
 
@@ -328,14 +415,19 @@ export default function BookingConfirmation() {
       {/* Confirm Button */}
       <View style={styles.bottomContainer}>
         <TouchableOpacity 
-          style={[styles.confirmButton, bookingInProgress && styles.confirmButtonDisabled]}
+          style={[styles.confirmButton, (bookingInProgress || paymentInProgress) && styles.confirmButtonDisabled]}
           onPress={handleConfirmBooking}
-          disabled={bookingInProgress}
+          disabled={bookingInProgress || paymentInProgress}
         >
-          {bookingInProgress ? (
-            <ActivityIndicator color={COLORS.background} />
+          {bookingInProgress || paymentInProgress ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator color={COLORS.background} />
+              <Text style={styles.loadingButtonText}>
+                {paymentInProgress ? 'Setting up payment...' : 'Processing...'}
+              </Text>
+            </View>
           ) : (
-            <Text style={styles.confirmText}>Confirm Booking - ${(totalAmount / 100).toFixed(0)}</Text>
+            <Text style={styles.confirmText}>Pay Now - ${(totalAmount / 100).toFixed(0)}</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -576,6 +668,30 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.muted,
     lineHeight: 16,
+    marginBottom: 12,
+  },
+  paymentFeatures: {
+    gap: 8,
+  },
+  featureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  featureText: {
+    fontSize: 12,
+    color: COLORS.text,
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  loadingButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.background,
   },
   
   // Policy Card
