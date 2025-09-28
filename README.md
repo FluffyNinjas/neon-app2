@@ -1,5 +1,3 @@
-Neon
-
 Neon is a React Native application that enables advertisers to rent local digital screens through a time-based model.
 Screen owners can monetize their displays, while advertisers can seamlessly browse, book, and manage ad campaigns—all from one app.
 
